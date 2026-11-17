@@ -203,6 +203,16 @@ export default function AgentsPage() {
             />
           </div>
 
+          {!result && !running && (
+            <div className="p-8 text-center border border-dashed border-kria-border/70 rounded-xl space-y-1.5">
+              <Bot className="h-6 w-6 text-slate-500 mx-auto" />
+              <p className="text-xs font-semibold text-slate-300">Ready for Execution</p>
+              <p className="text-[11px] text-slate-500">
+                Enter your target product or task parameters above and click &ldquo;Run Agent Task&rdquo; to generate structured outputs. No pre-baked history.
+              </p>
+            </div>
+          )}
+
           {/* Structured Output Display */}
           {result && (
             <div className="mt-4 p-4 rounded-xl bg-kria-surface border border-kria-border space-y-3">

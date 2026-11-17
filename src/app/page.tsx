@@ -256,35 +256,43 @@ export default function OverviewPage() {
               </Link>
             </div>
 
-            <div className="space-y-3">
-              {approvals.slice(0, 3).map((item) => (
-                <div
-                  key={item.id}
-                  className="p-3 rounded-lg bg-kria-surface border border-kria-border hover:border-kria-600 transition-all flex flex-col gap-2"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-xs font-semibold text-slate-200 line-clamp-1">
-                      {item.title}
-                    </span>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                        item.risk_level === 'critical'
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                          : item.risk_level === 'high'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                          : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                      }`}
-                    >
-                      {item.risk_level} Risk
-                    </span>
+            {approvals.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400 bg-kria-surface/50 rounded-lg border border-kria-border/50">
+                <ShieldCheck className="h-5 w-5 text-emerald-400 mx-auto mb-1.5" />
+                <p className="font-semibold text-slate-300">Approval queue is clear</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">No pending customer messages, quotes, or campaigns awaiting review.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {approvals.slice(0, 3).map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-lg bg-kria-surface border border-kria-border hover:border-kria-600 transition-all flex flex-col gap-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-xs font-semibold text-slate-200 line-clamp-1">
+                        {item.title}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                          item.risk_level === 'critical'
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                            : item.risk_level === 'high'
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                        }`}
+                      >
+                        {item.risk_level} Risk
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span>Dest: <strong className="text-slate-300">{item.destination}</strong></span>
+                      <span className="text-amber-400 font-medium">Pending Review</span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-400">
-                    <span>Dest: <strong className="text-slate-300">{item.destination}</strong></span>
-                    <span className="text-amber-400 font-medium">Pending Review</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Section B: Recent Audit & Activity Logs */}
@@ -299,24 +307,32 @@ export default function OverviewPage() {
               </Link>
             </div>
 
-            <div className="space-y-3">
-              {activities.slice(0, 4).map((act) => (
-                <div
-                  key={act.id}
-                  className="p-3 rounded-lg bg-kria-surface border border-kria-border/60 flex items-start justify-between gap-3 text-xs"
-                >
-                  <div>
-                    <p className="text-slate-200 font-medium">{act.description}</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Actor: <span className="text-slate-300">{act.actor_id || 'System'}</span> ({act.actor_type})
-                    </p>
+            {activities.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400 bg-kria-surface/50 rounded-lg border border-kria-border/50">
+                <Clock className="h-5 w-5 text-slate-400 mx-auto mb-1.5" />
+                <p className="font-semibold text-slate-300">No activity events yet</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Real actions by team members and AI agents will be logged here.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activities.slice(0, 4).map((act) => (
+                  <div
+                    key={act.id}
+                    className="p-3 rounded-lg bg-kria-surface border border-kria-border/60 flex items-start justify-between gap-3 text-xs"
+                  >
+                    <div>
+                      <p className="text-slate-200 font-medium">{act.description}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Actor: <span className="text-slate-300">{act.actor_id || 'System'}</span> ({act.actor_type})
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-slate-500 whitespace-nowrap">
+                      {new Date(act.created_at).toLocaleDateString()}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-slate-500 whitespace-nowrap">
-                    {new Date(act.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

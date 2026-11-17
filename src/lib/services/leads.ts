@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/client';
-import { DEMO_LEADS, DEMO_LEAD_ACTIVITIES } from '@/lib/demo-data';
+import { getActiveLeadsFixture, DEMO_LEADS, DEMO_LEAD_ACTIVITIES } from '@/lib/demo-data';
 import { Lead, LeadStatus, LeadActivity } from '@/types/database';
 
 export async function getLeads(): Promise<{ data: Lead[]; isLive: boolean; error?: string }> {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
-      return { data: DEMO_LEADS, isLive: false };
+      return { data: getActiveLeadsFixture(), isLive: false };
     }
 
     const supabase = createClient();
@@ -15,13 +15,13 @@ export async function getLeads(): Promise<{ data: Lead[]; isLive: boolean; error
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error || !data || data.length === 0) {
-      return { data: DEMO_LEADS, isLive: false, error: error?.message };
+    if (error) {
+      return { data: getActiveLeadsFixture(), isLive: false, error: error?.message };
     }
 
-    return { data, isLive: true };
+    return { data: data || [], isLive: true };
   } catch (err: any) {
-    return { data: DEMO_LEADS, isLive: false, error: err.message };
+    return { data: getActiveLeadsFixture(), isLive: false, error: err.message };
   }
 }
 

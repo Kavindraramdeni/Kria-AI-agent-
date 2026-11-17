@@ -1,35 +1,48 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Header } from '@/components/layout/header';
 import { DemoBadge } from '@/components/ui/demo-badge';
-import { ShieldCheck } from 'lucide-react';
+import { isDemoModeActive } from '@/lib/demo-mode';
+import { ShieldCheck, Megaphone, Plus, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+
+interface CampaignItem {
+  id: string;
+  name: string;
+  objective: string;
+  channels: string[];
+  budget: number;
+  start_date: string;
+  end_date: string;
+  status: string;
+  is_demo: boolean;
+}
+
+const OPTIONAL_DEMO_CAMPAIGNS: CampaignItem[] = [
+  {
+    id: 'cmp-001',
+    name: 'Q4 Wholesale Acrylic Framing Push [DEMO]',
+    objective: 'Acquire 25 bulk gift shop and studio partners',
+    channels: ['Instagram Ads', 'Direct B2B Outreach', 'WhatsApp Catalog'],
+    budget: 15000,
+    start_date: '2026-11-20',
+    end_date: '2026-12-20',
+    status: 'review',
+    is_demo: true,
+  },
+];
 
 export default function CampaignsPage() {
-  const campaigns = [
-    {
-      id: 'cmp-001',
-      name: 'Q4 Wholesale Acrylic Framing Push',
-      objective: 'Acquire 25 bulk gift shop and studio partners',
-      channels: ['Instagram Ads', 'Direct B2B Outreach', 'WhatsApp Catalog'],
-      budget: 15000,
-      start_date: '2026-11-20',
-      end_date: '2026-12-20',
-      status: 'review',
-      is_demo: true,
-    },
-    {
-      id: 'cmp-002',
-      name: 'Corporate Executive Year-End Awards Campaign',
-      objective: 'Promote 8x10 Acrylic Blocks & Custom LED Signs for IT Corporate Gifting',
-      channels: ['LinkedIn Direct', 'Corporate Inbound'],
-      budget: 25000,
-      start_date: '2026-12-01',
-      end_date: '2026-12-31',
-      status: 'draft',
-      is_demo: true,
-    },
-  ];
+  const [campaigns, setCampaigns] = useState<CampaignItem[]>([]);
+
+  useEffect(() => {
+    if (isDemoModeActive()) {
+      setCampaigns(OPTIONAL_DEMO_CAMPAIGNS);
+    } else {
+      setCampaigns([]);
+    }
+  }, []);
 
   return (
     <>
@@ -46,57 +59,68 @@ export default function CampaignsPage() {
           <div>
             <h3 className="font-semibold text-white text-sm">Ad Spend Financial Safety Lock</h3>
             <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-              Automated ad spend is strictly prohibited. No marketing campaign can launch, charge a credit card, or bid on ad platforms without owner approval in the Approval Center.
+              Automated ad spend is strictly prohibited. No marketing campaign can launch, charge a credit card, or bid on ad platforms without explicit Owner approval in the Approval Center.
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {campaigns.map((camp) => (
-            <div
-              key={camp.id}
-              className="p-5 rounded-xl bg-kria-card border border-kria-border hover:border-kria-600 transition-all space-y-3 shadow-card"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white">{camp.name}</span>
-                <div className="flex items-center gap-2">
-                  <DemoBadge />
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                    {camp.status}
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-xs text-slate-400">
-                Objective: <span className="text-slate-200">{camp.objective}</span>
-              </p>
-
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {camp.channels.map((ch, i) => (
-                  <span
-                    key={i}
-                    className="text-[10px] font-medium px-2 py-0.5 rounded bg-kria-surface text-electric-light border border-kria-border/50"
-                  >
-                    {ch}
-                  </span>
-                ))}
-              </div>
-
-              <div className="p-3 bg-kria-surface rounded-lg border border-kria-border/60 flex items-center justify-between text-xs">
-                <div>
-                  <span className="text-slate-400 block text-[10px]">Total Budget</span>
-                  <strong className="text-sm font-bold text-emerald-400">
-                    ₹{camp.budget.toLocaleString()}
-                  </strong>
-                </div>
-
-                <div className="text-right text-slate-400 text-[11px]">
-                  <span>{camp.start_date} → {camp.end_date}</span>
-                </div>
-              </div>
+        {campaigns.length === 0 ? (
+          <div className="p-12 rounded-xl bg-kria-card border border-kria-border text-center space-y-3 shadow-card">
+            <div className="inline-flex p-3 rounded-xl bg-kria-800 text-slate-400">
+              <Megaphone className="h-6 w-6" />
             </div>
-          ))}
-        </div>
+            <h3 className="text-sm font-bold text-white">No Active Campaigns</h3>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              You have no active ad campaigns or promotional expenditures running. All campaigns require manual proposal and owner approval before launch.
+            </p>
+            <div className="pt-2 flex items-center justify-center gap-3">
+              <Link
+                href="/agents"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-electric hover:bg-electric-dark text-white transition-colors shadow-glow"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Draft Campaign with AI Agent
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {campaigns.map((camp) => (
+              <div
+                key={camp.id}
+                className="p-5 rounded-xl bg-kria-card border border-kria-border hover:border-kria-600 transition-all space-y-3 shadow-card"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-kria-800 text-slate-300">
+                    Status: {camp.status}
+                  </span>
+                  {camp.is_demo && <DemoBadge />}
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-bold text-white">{camp.name}</h4>
+                  <p className="text-xs text-slate-400 mt-1">{camp.objective}</p>
+                </div>
+
+                <div className="p-3 rounded-lg bg-kria-850 border border-kria-border/60 flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Approved Budget Cap:</span>
+                  <strong className="text-white font-mono">₹{camp.budget.toLocaleString()}</strong>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {camp.channels.map((ch) => (
+                    <span
+                      key={ch}
+                      className="text-[10px] px-2 py-0.5 rounded bg-kria-800 text-slate-300 font-medium"
+                    >
+                      {ch}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
     </>
   );

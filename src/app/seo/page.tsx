@@ -1,20 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Header } from '@/components/layout/header';
 import { DemoBadge } from '@/components/ui/demo-badge';
-import { DEMO_SEO_KEYWORDS } from '@/lib/demo-data';
+import { getActiveSeoKeywordsFixture } from '@/lib/demo-data';
 import { createApprovalRequest } from '@/lib/services/approvals';
+import { isDemoModeActive } from '@/lib/demo-mode';
 import { SEOKeyword } from '@/types/database';
 import { Search, Plus, AlertCircle, Globe, Sparkles, CheckCircle2, ShieldAlert } from 'lucide-react';
 
 export default function SEOStudioPage() {
-  const [keywords, setKeywords] = useState<SEOKeyword[]>(DEMO_SEO_KEYWORDS);
+  const [keywords, setKeywords] = useState<SEOKeyword[]>([]);
   const [search, setSearch] = useState('');
   const [newKeyword, setNewKeyword] = useState('');
   const [intent, setIntent] = useState<'commercial' | 'transactional' | 'informational'>('commercial');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('high');
   const [cluster] = useState('Magnetic Frames');
+
+  useEffect(() => {
+    setKeywords(getActiveSeoKeywordsFixture());
+  }, []);
 
   // Website Audit State
   const [auditUrl, setAuditUrl] = useState('https://kriatech.com/products/acrylic-frames');
@@ -276,7 +281,14 @@ export default function SEOStudioPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-kria-border text-slate-300">
-                {filtered.map((kw) => (
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                      No tracked keywords yet. Add high-intent acrylic framing terms or run the SEO Strategy Agent above.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((kw) => (
                   <tr key={kw.id} className="hover:bg-kria-surface/70 transition-colors">
                     <td className="px-4 py-3 font-semibold text-white">
                       <div className="flex items-center gap-2">
@@ -315,8 +327,9 @@ export default function SEOStudioPage() {
                       </span>
                     </td>
                   </tr>
-                ))}
-              </tbody>
+                ))
+              )}
+            </tbody>
             </table>
           </div>
         </div>

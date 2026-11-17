@@ -1,30 +1,31 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Header } from '@/components/layout/header';
 import { DemoBadge } from '@/components/ui/demo-badge';
 import { createApprovalRequest } from '@/lib/services/approvals';
+import { isDemoModeActive } from '@/lib/demo-mode';
 import { ContentItem } from '@/types/database';
-import { Copy, Check, Calendar, AlertTriangle } from 'lucide-react';
+import { Copy, Check, Sparkles, PenTool } from 'lucide-react';
 
-const INITIAL_CONTENT: ContentItem[] = [
+const OPTIONAL_DEMO_CONTENT: ContentItem[] = [
   {
     id: 'cnt-001',
-    title: 'Instagram Carousel: 3 Reasons Acrylic Blocks Beat Glass Photo Frames',
+    title: 'Instagram Carousel: 3 Reasons Acrylic Blocks Beat Glass Photo Frames [DEMO]',
     content_type: 'instagram_caption',
-    body: `Why settle for fragile, reflective glass with wooden borders when you can showcase your memories in floating clarity? ✨
+    body: `Why settle for fragile, reflective glass when you can showcase memories in floating clarity? ✨
 
-Here is why interior stylists are choosing KRIA TECH magnetic acrylic frames:
-1. Optical Grade Cast Acrylic — 92% light transmission with zero green tint.
-2. 4-Corner Neodymium Magnets — Swap pictures in 3 seconds without taking apart frames.
+1. Optical Grade Cast Acrylic — 92% light transmission.
+2. 4-Corner N52 Neodymium Magnets — Swap pictures in seconds.
 3. 20mm Solid Self-Standing Block — No bulky kickstand needed.
 
-DM us for bulk wholesale catalogs for retail gift shops!
-#KRIAtech #AcrylicPhotoFrame #CustomFraming #MinimalistDecor`,
-    target_audience: 'Home decor enthusiasts, gift shop owners, wedding couples',
-    objective: 'Demonstrate superior optical clarity and ease of photo swapping',
-    keywords: ['magnetic acrylic photo frame', 'floating desk frame', 'acrylic wedding keepsake'],
-    suggested_cta: 'DM for wholesale inquiries or visit our showroom',
+DM for bulk wholesale catalogs!
+#KRIAtech #AcrylicPhotoFrame #CustomFraming`,
+    target_audience: 'Home decor enthusiasts, gift shop owners',
+    objective: 'Demonstrate superior optical clarity',
+    keywords: ['magnetic acrylic photo frame', 'floating desk frame'],
+    suggested_cta: 'DM for wholesale inquiries',
     status: 'review',
     generated_by_agent_task_id: null,
     scheduled_for: new Date(Date.now() + 86400000 * 2).toISOString(),
@@ -32,33 +33,25 @@ DM us for bulk wholesale catalogs for retail gift shops!
     created_at: new Date(Date.now() - 86400000).toISOString(),
     updated_at: new Date(Date.now() - 86400000).toISOString(),
   },
-  {
-    id: 'cnt-002',
-    title: 'Product Description: 5x7 Diamond-Edge Magnetic Acrylic Frame',
-    content_type: 'product_description',
-    body: `Bring modern sophistication to executive desks and home consoles with the KRIA TECH 5x7 Magnetic Acrylic Photo Block. Each frame is crafted from dual 12mm panels of high-density cast acrylic, precision laser-cut and finished with a 30-ton diamond polishing wheel for flawless optical transparency. Four discrete nickel-plated N52 neodymium corner magnets hold your cherished photographs firmly in place while creating a stunning floating visual depth.`,
-    target_audience: 'Retail buyers and corporate gifting managers',
-    objective: 'Drive conversion on high-margin 5x7 portrait frames',
-    keywords: ['5x7 acrylic frame', 'executive desktop award frame', 'diamond edge photo block'],
-    suggested_cta: 'Inquire for Custom Laser Branding',
-    status: 'draft',
-    generated_by_agent_task_id: null,
-    scheduled_for: null,
-    is_demo: true,
-    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
 ];
 
 export default function ContentStudioPage() {
-  const [contentList] = useState<ContentItem[]>(INITIAL_CONTENT);
+  const [contentList, setContentList] = useState<ContentItem[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [approvalSentId, setApprovalSentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isDemoModeActive()) {
+      setContentList(OPTIONAL_DEMO_CONTENT);
+    } else {
+      setContentList([]);
+    }
+  }, []);
 
   function handleCopy(text: string, id: string) {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    setTimeout(() => setCopiedId(null), 2500);
   }
 
   async function handleSendToApproval(item: ContentItem) {
@@ -67,119 +60,114 @@ export default function ContentStudioPage() {
       title: `Publish: ${item.title}`,
       proposed_content: {
         body: item.body,
-        target_audience: item.target_audience,
-        suggested_cta: item.suggested_cta,
         keywords: item.keywords,
+        content_type: item.content_type,
       },
-      destination: 'Instagram / KRIA TECH Content Channels',
-      agent_id: 'content-agent',
+      destination: 'Instagram / Social Outbox',
       risk_level: 'medium',
     });
 
     if (res.success) {
       setApprovalSentId(item.id);
       setTimeout(() => setApprovalSentId(null), 3500);
+    } else {
+      alert('Failed to submit content to Approval Gate.');
     }
   }
 
   return (
     <>
       <Header
-        title="Content Studio & Publishing Gate"
-        subtitle="Editorial calendar, SEO copywriting, and social captions with strict approval enforcement"
+        title="Marketing Content & Publishing Studio"
+        subtitle="Manage articles, SEO product copy, social scripts and publication approvals"
       />
 
       <main className="p-6 max-w-7xl mx-auto w-full space-y-6">
-        {/* Header Bar */}
         <div className="flex items-center justify-between">
-          <p className="text-xs text-slate-400">
-            All marketing copy generated by agents or human staff requires approval before being published to public channels.
-          </p>
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span>Total Content Drafts: <strong className="text-white">{contentList.length}</strong></span>
+          </div>
+
+          <Link
+            href="/agents"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-electric hover:bg-electric-dark text-white transition-colors shadow-glow"
+          >
+            <Sparkles className="h-4 w-4" />
+            Generate New Content with AI
+          </Link>
         </div>
 
-        {/* Content Cards */}
-        <div className="space-y-4">
-          {contentList.map((item) => (
-            <div
-              key={item.id}
-              className="p-5 rounded-xl bg-kria-card border border-kria-border hover:border-kria-600 transition-all space-y-4 shadow-card"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-purple-500/10 text-purple-300 border border-purple-500/20">
-                    {item.content_type.replace('_', ' ')}
-                  </span>
-                  {item.is_demo && <DemoBadge />}
-                  <span className="text-xs text-slate-400">
-                    Status: <strong className="text-white uppercase">{item.status}</strong>
-                  </span>
-                </div>
-
-                {item.scheduled_for && (
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                    <Calendar className="h-3.5 w-3.5 text-electric-light" />
-                    <span>Target Date: {new Date(item.scheduled_for).toLocaleDateString()}</span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <h3 className="font-bold text-white text-sm">{item.title}</h3>
-                {item.target_audience && (
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Audience: <span className="text-slate-300">{item.target_audience}</span>
-                  </p>
-                )}
-              </div>
-
-              {/* Body */}
-              <div className="p-4 rounded-lg bg-kria-surface border border-kria-border/70 text-xs text-slate-200 whitespace-pre-wrap leading-relaxed font-sans">
-                {item.body}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-kria-border/60">
-                <div className="flex flex-wrap gap-1.5">
-                  {item.keywords.map((kw, idx) => (
-                    <span
-                      key={idx}
-                      className="text-[10px] px-2 py-0.5 rounded bg-kria-850 text-slate-400 border border-kria-border/50"
-                    >
-                      #{kw}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleCopy(item.body, item.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-kria-850 hover:bg-kria-800 text-slate-300 border border-kria-border transition-colors"
-                  >
-                    {copiedId === item.id ? (
-                      <>
-                        <Check className="h-3.5 w-3.5 text-emerald-400" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-3.5 w-3.5" />
-                        Copy Text
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => handleSendToApproval(item)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-electric hover:bg-electric-dark text-white transition-colors shadow-glow"
-                  >
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    {approvalSentId === item.id ? 'Submitted!' : 'Submit to Approval Gate'}
-                  </button>
-                </div>
-              </div>
+        {contentList.length === 0 ? (
+          <div className="p-12 rounded-xl bg-kria-card border border-kria-border text-center space-y-3 shadow-card">
+            <div className="inline-flex p-3 rounded-xl bg-kria-800 text-slate-400">
+              <PenTool className="h-6 w-6" />
             </div>
-          ))}
-        </div>
+            <h3 className="text-sm font-bold text-white">No Content Drafts Yet</h3>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              Your content library is empty. Use the Content Studio Agent to generate product descriptions, Instagram captions, or reels scripts grounded in factory truth.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/agents"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-electric hover:bg-electric-dark text-white transition-colors shadow-glow"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Generate First Piece of Content
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {contentList.map((item) => (
+              <div
+                key={item.id}
+                className="p-5 rounded-xl bg-kria-card border border-kria-border hover:border-kria-600 transition-all space-y-4 shadow-card"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-kria-border/60 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-kria-800 text-electric-light uppercase tracking-wider">
+                        {item.content_type.replace('_', ' ')}
+                      </span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase">
+                        Status: {item.status}
+                      </span>
+                      {item.is_demo && <DemoBadge />}
+                    </div>
+                    <h3 className="text-sm font-bold text-white mt-1">{item.title}</h3>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => handleCopy(item.body, item.id)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-kria-800 hover:bg-kria-700 text-slate-200 border border-kria-border transition-colors"
+                    >
+                      {copiedId === item.id ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copiedId === item.id ? 'Copied' : 'Copy'}
+                    </button>
+
+                    <button
+                      onClick={() => handleSendToApproval(item)}
+                      disabled={approvalSentId === item.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-electric hover:bg-electric-dark text-white disabled:opacity-50 transition-colors shadow-glow"
+                    >
+                      {approvalSentId === item.id ? 'Submitted to Gate' : 'Submit to Approval Gate'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-lg bg-kria-850/80 border border-kria-border/60 text-xs text-slate-300 whitespace-pre-line leading-relaxed font-sans">
+                  {item.body}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                  <span className="font-semibold text-slate-300">Target Audience:</span>
+                  <span>{item.target_audience}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
     </>
   );

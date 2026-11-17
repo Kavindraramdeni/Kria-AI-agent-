@@ -13,7 +13,7 @@ describe('Product Catalog & Pricing Rules', () => {
     magneticFrames.forEach((frame) => {
       expect(frame.bulk_price).toBeLessThan(frame.retail_price);
       expect(frame.min_bulk_quantity).toBeGreaterThanOrEqual(10);
-      expect(frame.is_demo).toBe(true);
+      expect(frame.is_demo).toBe(false);
     });
   });
 

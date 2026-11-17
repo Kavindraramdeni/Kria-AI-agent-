@@ -103,6 +103,16 @@ export default function ActivityLogsPage() {
 
         {loading ? (
           <div className="p-12 text-center text-slate-400 text-sm">Loading audit records...</div>
+        ) : logs.length === 0 ? (
+          <div className="p-12 rounded-xl bg-kria-card border border-kria-border text-center space-y-3 shadow-card">
+            <div className="inline-flex p-3 rounded-xl bg-kria-800 text-slate-400">
+              <Shield className="h-6 w-6" />
+            </div>
+            <h3 className="text-sm font-bold text-white">No Activity Events Recorded Yet</h3>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              Your audit trail is clean. As users create leads, agents generate proposals, and the owner dispatches approvals, each event will be cryptographically hashed with SHA-256 and chained here.
+            </p>
+          </div>
         ) : (
           <div className="rounded-xl bg-kria-card border border-kria-border overflow-hidden shadow-card">
             <div className="divide-y divide-kria-border">

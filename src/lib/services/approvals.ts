@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/client';
-import { DEMO_APPROVALS } from '@/lib/demo-data';
+import { getActiveApprovalsFixture, DEMO_APPROVALS } from '@/lib/demo-data';
 import { ApprovalRequest, ApprovalStatus } from '@/types/approval';
 
 export async function getApprovals(): Promise<{ data: ApprovalRequest[]; isLive: boolean; error?: string }> {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
-      return { data: DEMO_APPROVALS, isLive: false };
+      return { data: getActiveApprovalsFixture(), isLive: false };
     }
 
     const supabase = createClient();
@@ -15,13 +15,13 @@ export async function getApprovals(): Promise<{ data: ApprovalRequest[]; isLive:
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error || !data || data.length === 0) {
-      return { data: DEMO_APPROVALS, isLive: false, error: error?.message };
+    if (error) {
+      return { data: getActiveApprovalsFixture(), isLive: false, error: error?.message };
     }
 
-    return { data, isLive: true };
+    return { data: data || [], isLive: true };
   } catch (err: any) {
-    return { data: DEMO_APPROVALS, isLive: false, error: err.message };
+    return { data: getActiveApprovalsFixture(), isLive: false, error: err.message };
   }
 }
 
