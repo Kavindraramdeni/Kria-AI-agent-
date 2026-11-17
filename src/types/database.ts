@@ -161,5 +161,7 @@ export interface ActivityLog {
   actor_type: 'user' | 'agent' | 'system';
   actor_id: string | null;
   metadata: Record<string, any>;
+  previous_hash?: string;
+  hash?: string;
   created_at: string;
 }

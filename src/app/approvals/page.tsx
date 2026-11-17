@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { Header } from '@/components/layout/header';
 import { getApprovals, updateApprovalStatus } from '@/lib/services/approvals';
-import { executeApprovedAction } from '@/lib/services/execution-dispatcher';
 import { logActivity } from '@/lib/services/activity-logs';
 import { ApprovalRequest, ApprovalStatus } from '@/types/approval';
 import {
@@ -55,13 +54,23 @@ export default function ApprovalsPage() {
   }
 
   async function handleExecute(id: string) {
-    const res = await executeApprovedAction(id, 'admin@kriatech.com');
-    if (res.success) {
-      setActionMessage(`ACTION DISPATCHED TO: ${res.destination}. Single-use execution recorded.`);
-      setTimeout(() => setActionMessage(''), 4500);
-      loadApprovals();
-    } else {
-      alert(res.error || 'Execution blocked by security gate.');
+    try {
+      const resp = await fetch(`/api/approvals/${id}/dispatch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actor_email: 'admin@kriatech.com' }),
+      });
+      const res = await resp.json();
+
+      if (resp.ok && res.success) {
+        setActionMessage(`ACTION DISPATCHED TO: ${res.destination}. Single-use execution recorded.`);
+        setTimeout(() => setActionMessage(''), 4500);
+        loadApprovals();
+      } else {
+        alert(res.error || `Execution blocked by security gate (${res.error_code || resp.status}).`);
+      }
+    } catch (err: any) {
+      alert(`Network or Server error: ${err.message}`);
     }
   }
 

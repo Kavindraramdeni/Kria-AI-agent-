@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { DEMO_ACTIVITY_LOGS } from '@/lib/demo-data';
 import { ActivityLog } from '@/types/database';
+import { computeLogHash } from './tamper-proof';
 
 export async function getActivityLogs(): Promise<{ data: ActivityLog[]; isLive: boolean; error?: string }> {
   try {
@@ -34,8 +35,21 @@ export async function logActivity(entry: {
   actor_type?: 'user' | 'agent' | 'system';
   actor_id?: string;
   metadata?: Record<string, any>;
-}): Promise<void> {
+}): Promise<ActivityLog> {
   try {
+    const createdAt = new Date().toISOString();
+    const latestExisting = DEMO_ACTIVITY_LOGS[0];
+    const prevHash = latestExisting?.hash || '0000000000000000000000000000000000000000000000000000000000000000';
+
+    const selfHash = computeLogHash({
+      previous_hash: prevHash,
+      created_at: createdAt,
+      entity_type: entry.entity_type,
+      action: entry.action,
+      actor_id: entry.actor_id || null,
+      metadata: entry.metadata || {},
+    });
+
     const newLog: ActivityLog = {
       id: 'act-' + Date.now(),
       entity_type: entry.entity_type,
@@ -45,7 +59,9 @@ export async function logActivity(entry: {
       actor_type: entry.actor_type || 'user',
       actor_id: entry.actor_id || null,
       metadata: entry.metadata || {},
-      created_at: new Date().toISOString(),
+      previous_hash: prevHash,
+      hash: selfHash,
+      created_at: createdAt,
     };
 
     DEMO_ACTIVITY_LOGS.unshift(newLog);
@@ -55,7 +71,10 @@ export async function logActivity(entry: {
       const supabase = createClient();
       await supabase.from('activity_logs').insert([newLog]);
     }
+
+    return newLog;
   } catch (err) {
     console.error('Failed to log activity:', err);
+    throw err;
   }
 }

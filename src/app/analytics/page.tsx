@@ -10,6 +10,7 @@ import { TrendingUp, Users, Package, Sparkles, AlertCircle, ArrowUpRight, CheckC
 export default function AnalyticsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [isLiveDatabase, setIsLiveDatabase] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
 
@@ -18,6 +19,7 @@ export default function AnalyticsPage() {
       const [lRes, pRes] = await Promise.all([getLeads(), getProducts()]);
       setLeads(lRes.data);
       setProducts(pRes.data);
+      setIsLiveDatabase(Boolean(lRes.isLive || pRes.isLive));
     }
     load();
   }, []);
@@ -68,6 +70,21 @@ export default function AnalyticsPage() {
       />
 
       <main className="p-6 max-w-7xl mx-auto w-full space-y-6">
+        {/* Authoritative Data Provenance Indicator */}
+        <div className="p-3.5 rounded-xl bg-kria-card border border-kria-border flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2.5">
+            <div className={`h-2.5 w-2.5 rounded-full ${isLiveDatabase ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+            <span className="font-semibold text-slate-200">
+              {isLiveDatabase
+                ? 'Authoritative Production Database (Connected to Supabase PostgreSQL)'
+                : 'Offline Demo Baseline (Local Verified Seeded Schema)'}
+            </span>
+          </div>
+          <div className="text-[11px] text-slate-400">
+            Backed by <strong className="text-white">{leads.length}</strong> CRM Leads and <strong className="text-white">{products.length}</strong> Product SKUs
+          </div>
+        </div>
+
         {/* Executive AI Analyst Action Panel */}
         <div className="p-5 rounded-xl bg-gradient-to-r from-kria-850 via-kria-900 to-kria-card border border-electric/30 shadow-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
