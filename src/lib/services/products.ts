@@ -72,3 +72,43 @@ export async function createProduct(product: Partial<Product>): Promise<{ succes
     return { success: false, error: err.message };
   }
 }
+
+export async function updateProduct(
+  id: string,
+  updates: Partial<Product>
+): Promise<{ success: boolean; data?: Product; error?: string }> {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
+      const idx = DEMO_PRODUCTS.findIndex((p) => p.id === id);
+      if (idx !== -1) {
+        DEMO_PRODUCTS[idx] = {
+          ...DEMO_PRODUCTS[idx],
+          ...updates,
+          updated_at: new Date().toISOString(),
+        };
+        return { success: true, data: DEMO_PRODUCTS[idx] };
+      }
+      return { success: false, error: 'Product not found in local catalog' };
+    }
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('products')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
