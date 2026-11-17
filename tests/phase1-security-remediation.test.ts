@@ -78,13 +78,13 @@ describe('Phase 1 — Security and Execution Transparency Remediation', () => {
         isDemo: false,
       };
 
-      const req = new NextRequest('http://localhost:3000/api/agents/sales-agent/run', {
+      const req = new NextRequest('http://localhost:3000/api/agents/competitor-agent/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: 'Score lead for 500 pcs wholesale inquiry' }),
+        body: JSON.stringify({ input: 'Analyze acrylic frame competitors' }),
       });
 
-      const res = await runAgent(req, { params: { agentId: 'sales-agent' } });
+      const res = await runAgent(req, { params: { agentId: 'competitor-agent' } });
       expect(res.status).toBe(200);
 
       const json = await res.json();
@@ -111,13 +111,13 @@ describe('Phase 1 — Security and Execution Transparency Remediation', () => {
         isDemo: false,
       };
 
-      const req = new NextRequest('http://localhost:3000/api/agents/sales-agent/run', {
+      const req = new NextRequest('http://localhost:3000/api/agents/competitor-agent/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: 'Score lead for 500 pcs wholesale inquiry' }),
+        body: JSON.stringify({ input: 'Analyze acrylic frame competitors' }),
       });
 
-      const res = await runAgent(req, { params: { agentId: 'sales-agent' } });
+      const res = await runAgent(req, { params: { agentId: 'competitor-agent' } });
       expect(res.status).toBe(200);
 
       const json = await res.json();

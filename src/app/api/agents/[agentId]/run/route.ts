@@ -17,6 +17,7 @@ import { KRIA_CATALOG_VARIANTS, KRIA_TECH_MANUFACTURING_SPECS } from '@/lib/data
 import { getServerSession } from '@/lib/auth/session';
 import { executeContentStudioAgent } from '@/lib/services/content-studio';
 import { executeSEOStrategyAgent } from '@/lib/services/seo-strategy';
+import { executeSalesLeadAgent } from '@/lib/services/sales-lead-agent';
 
 export async function POST(
   req: NextRequest,
@@ -154,64 +155,50 @@ export async function POST(
       }
 
       case 'sales-agent': {
-        const leadQty = typeof input === 'object' && input.quantity ? Number(input.quantity) : 50;
-        const requestedSku = typeof input === 'object' && input.sku ? String(input.sku) : 'KRA-REC-0604';
-        const hasSubscription = typeof input === 'object' ? Boolean(input.has_subscription) : false;
+        // Phase 2C: Genuinely AI-Powered Generation via Google Gemini
+        const salesResult = await executeSalesLeadAgent({
+          lead_id: body.lead_id,
+          lead_name: body.lead_name || (typeof input === 'object' ? input.lead_name : undefined),
+          business_name: body.business_name || (typeof input === 'object' ? input.business_name : undefined),
+          phone: body.phone,
+          email: body.email,
+          location: body.location,
+          sku: body.sku || (typeof input === 'object' ? input.sku : undefined),
+          quantity: body.quantity ? Number(body.quantity) : (typeof input === 'object' && input.quantity ? Number(input.quantity) : undefined),
+          has_subscription: body.has_subscription ?? (typeof input === 'object' ? input.has_subscription : undefined),
+          budget: body.budget ? Number(body.budget) : undefined,
+          source: body.source,
+          topic_or_prompt: typeof input === 'string' ? input : body.topic_or_prompt || body.notes,
+          actor_email: session.email,
+        });
 
-        // Use calculation engine for exact tier pricing
-        let quoteCalculation;
-        try {
-          quoteCalculation = calculateWholesaleQuote({
-            sku: requestedSku,
-            quantity: leadQty,
-            hasSubscription,
-          });
-        } catch {
-          // Fallback to primary 6x4 magnet frame
-          quoteCalculation = calculateWholesaleQuote({
-            sku: 'KRA-REC-0604',
-            quantity: leadQty,
-            hasSubscription,
-          });
+        if (!salesResult.success) {
+          return NextResponse.json(
+            {
+              error: salesResult.error || 'Sales Lead AI scoring failed.',
+              execution_mode: 'error',
+              is_simulated: false,
+              model_invoked: false,
+            },
+            { status: 500 }
+          );
         }
 
-        const isBulk = !quoteCalculation.is_below_moq;
-        const unitPrice = quoteCalculation.effective_unit_price;
-        const totalAmount = quoteCalculation.final_total_inr;
-
-        const rawOutput = {
-          score: isBulk ? (leadQty >= 250 ? 95 : 90) : 65,
-          priority: isBulk ? ('high' as const) : ('medium' as const),
-          intent_tier: isBulk ? ('Bulk Evaluator' as const) : ('Retail Curious' as const),
-          suggested_action: isBulk
-            ? `Dispatch physical sample box and follow up via WhatsApp with confirmed ${quoteCalculation.tier_applied} quotation.`
-            : `Order is below factory bulk MOQ (${quoteCalculation.min_bulk_quantity} pcs). Suggest Demo Starter Kit (24 pcs for ₹999) or storefront base pricing.`,
-          suggested_follow_up_hours: isBulk ? 24 : 48,
-          draft_response_message: isBulk
-            ? `Hello! Thank you for your inquiry for ${leadQty} units of ${quoteCalculation.product_name}. Our Hyderabad factory wholesale rate for ${quoteCalculation.tier_applied} is ₹${unitPrice}/pc (Total: ₹${totalAmount.toLocaleString()}). Manufactured from 2mm monolithic cell-cast acrylic with grade N35 flush neodymium magnets.${hasSubscription ? ' Includes KRIA Subscription VIP discount (-₹2/pc).' : ''} Shall we proceed with dispatch?`
-            : `Hello! For orders under ${quoteCalculation.min_bulk_quantity} units of ${quoteCalculation.product_name}, our storefront base price is ₹${unitPrice}/pc (Total: ₹${totalAmount.toLocaleString()}). For wholesale pricing, our factory MOQ starts at ${quoteCalculation.min_bulk_quantity} pcs, or you can order our KRIA Demo Starter Kit (24 pcs across 4 shapes for just ₹999 all-inclusive).`,
-          recommended_quote: {
-            sku: quoteCalculation.sku,
-            quantity: leadQty,
-            unit_price_inr: unitPrice,
-            total_inr: totalAmount,
-            tier_applied: quoteCalculation.tier_applied,
-          },
-          reasoning_summary: `Authoritative factory quote calculated using KRIA TECH pricing matrix for ${quoteCalculation.tier_applied}.${quoteCalculation.is_below_moq ? ' Flagged as below factory MOQ.' : ''}`,
-          sources: ['KRIA TECH Hyderabad Wholesale Matrix 2026'],
-          verified_facts: [
-            `Manufacturer location: ${KRIA_TECH_MANUFACTURING_SPECS.location}`,
-            `Material standard: ${KRIA_TECH_MANUFACTURING_SPECS.material} (${KRIA_TECH_MANUFACTURING_SPECS.optical_clarity})`,
-            `Magnet spec: ${KRIA_TECH_MANUFACTURING_SPECS.magnet_spec}`,
-            `Applied unit price: ₹${unitPrice} (${quoteCalculation.tier_applied})`,
-          ],
-          assumptions: [
-            hasSubscription ? 'Customer holds active KRIA VIP Subscription.' : 'Customer does not hold KRIA VIP Subscription.',
-            'Payment terms: 100% advance before dispatch on custom laser jobs.',
-          ],
-        };
-        validatedOutput = SalesAgentOutputSchema.parse(rawOutput);
-        break;
+        return NextResponse.json({
+          success: true,
+          agent_id: agentId,
+          task_type: taskType,
+          output: salesResult.output,
+          quote: salesResult.quote,
+          execution_mode: 'live_ai',
+          model_invoked: true,
+          is_simulated: false,
+          model_name: salesResult.model_name,
+          saved_lead_id: salesResult.saved_lead_id,
+          approval_id: salesResult.approval_id,
+          conflicts_detected: salesResult.conflicts_detected,
+          message: 'Genuinely generated with Google Gemini AI grounded in verified KRIA TECH manufacturing parameters and pricing matrix',
+        });
       }
 
       case 'competitor-agent': {
