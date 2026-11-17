@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeApprovedAction } from '@/lib/services/execution-dispatcher';
 import { checkRateLimit } from '@/lib/services/rate-limit';
+import { getServerSession } from '@/lib/auth/session';
 
 /**
  * POST /api/approvals/[id]/dispatch
@@ -40,17 +41,24 @@ export async function POST(
       );
     }
 
+    // Verify server-side authentication
+    const session = await getServerSession();
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Authentication required to dispatch approval actions.' },
+        { status: 401 }
+      );
+    }
+
     // Check Idempotency-Key header or body
     const headerIdempotencyKey = req.headers.get('idempotency-key') || req.headers.get('x-idempotency-key');
 
-    let actorEmail = 'admin@kriatech.com';
+    // Trusted server-controlled actor email from verified session
+    const actorEmail = session.email;
     let bodyIdempotencyKey: string | undefined;
 
     try {
       const body = await req.json();
-      if (body.actor_email) {
-        actorEmail = body.actor_email;
-      }
       if (body.idempotency_key) {
         bodyIdempotencyKey = body.idempotency_key;
       }

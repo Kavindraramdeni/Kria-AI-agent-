@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { getActiveActivityLogsFixture, DEMO_ACTIVITY_LOGS } from '@/lib/demo-data';
+import { isDemoModeActive } from '@/lib/demo-mode';
 import { ActivityLog } from '@/types/database';
 import { computeLogHash } from './tamper-proof';
 
@@ -7,7 +8,8 @@ export async function getActivityLogs(): Promise<{ data: ActivityLog[]; isLive: 
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
-      return { data: getActiveActivityLogsFixture(), isLive: false };
+      const isAllowed = process.env.NODE_ENV === 'test' || isDemoModeActive();
+      return { data: isAllowed ? getActiveActivityLogsFixture() : [], isLive: false };
     }
 
     const supabase = createClient();
@@ -18,12 +20,12 @@ export async function getActivityLogs(): Promise<{ data: ActivityLog[]; isLive: 
       .limit(50);
 
     if (error) {
-      return { data: getActiveActivityLogsFixture(), isLive: false, error: error?.message };
+      return { data: [], isLive: false, error: error.message };
     }
 
     return { data: data || [], isLive: true };
   } catch (err: any) {
-    return { data: getActiveActivityLogsFixture(), isLive: false, error: err.message };
+    return { data: [], isLive: false, error: err.message };
   }
 }
 

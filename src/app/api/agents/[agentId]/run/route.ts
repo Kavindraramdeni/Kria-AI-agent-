@@ -14,6 +14,7 @@ import { AgentId } from '@/types/agent';
 import { logActivity } from '@/lib/services/activity-logs';
 import { calculateWholesaleQuote } from '@/lib/services/pricing-engine';
 import { KRIA_CATALOG_VARIANTS, KRIA_TECH_MANUFACTURING_SPECS } from '@/lib/data/kria-catalog-matrix';
+import { getServerSession } from '@/lib/auth/session';
 
 export async function POST(
   req: NextRequest,
@@ -27,6 +28,15 @@ export async function POST(
       return NextResponse.json(
         { error: `Agent '${params.agentId}' not found.` },
         { status: 404 }
+      );
+    }
+
+    // Verify server-side authentication
+    const session = await getServerSession();
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Authentication required to execute AI agents.' },
+        { status: 401 }
       );
     }
 
@@ -293,18 +303,23 @@ export async function POST(
       entity_type: 'agent_task',
       entity_id: agentId,
       action: 'agent_executed',
-      description: `${agent.name} executed task (${taskType}) with schema validation`,
+      description: `${agent.name} executed task (${taskType}) with schema validation [execution_mode: hardcoded]`,
       actor_type: 'agent',
-      actor_id: agentId,
+      actor_id: session.email || agentId,
     });
+
+    const hasCredentials = Boolean(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY);
 
     return NextResponse.json({
       success: true,
       agent_id: agentId,
       task_type: taskType,
       output: validatedOutput,
-      is_simulated: !Boolean(process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY),
-      credentials_configured: Boolean(process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY),
+      execution_mode: 'hardcoded',
+      is_simulated: true, // Always true until actual LLM model invocation occurs
+      credentials_configured: hasCredentials,
+      model_invoked: false,
+      message: 'Generated via verified KRIA TECH deterministic parameter matrix (Simulated)',
     });
   } catch (error: any) {
     console.error('Agent execution error:', error);

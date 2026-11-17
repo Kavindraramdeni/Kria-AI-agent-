@@ -1,12 +1,14 @@
 import { createClient } from '@/lib/supabase/client';
 import { DEMO_PRODUCTS } from '@/lib/demo-data';
+import { isDemoModeActive } from '@/lib/demo-mode';
 import { Product } from '@/types/database';
 
 export async function getProducts(): Promise<{ data: Product[]; isLive: boolean; error?: string }> {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
-      return { data: DEMO_PRODUCTS, isLive: false };
+      const isAllowed = process.env.NODE_ENV === 'test' || isDemoModeActive();
+      return { data: isAllowed ? DEMO_PRODUCTS : [], isLive: false };
     }
 
     const supabase = createClient();
@@ -15,14 +17,13 @@ export async function getProducts(): Promise<{ data: Product[]; isLive: boolean;
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error || !data || data.length === 0) {
-      // Fallback to demo items if table is empty or error
-      return { data: DEMO_PRODUCTS, isLive: false, error: error?.message };
+    if (error) {
+      return { data: [], isLive: false, error: error.message };
     }
 
-    return { data, isLive: true };
+    return { data: data || [], isLive: true };
   } catch (err: any) {
-    return { data: DEMO_PRODUCTS, isLive: false, error: err.message };
+    return { data: [], isLive: false, error: err.message };
   }
 }
 

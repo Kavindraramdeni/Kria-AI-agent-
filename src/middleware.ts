@@ -4,10 +4,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Exclude public and static routes
+  // 1. Exclude public assets, static resources, and login
   if (
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
     pathname.startsWith('/fonts') ||
     pathname === '/favicon.ico' ||
     pathname === '/login' ||
@@ -29,9 +28,6 @@ export async function middleware(request: NextRequest) {
     supabaseAnonKey &&
     !supabaseUrl.includes('placeholder')
   );
-
-  // Check demo user cookie for offline/local resilience
-  const demoCookie = request.cookies.get('kria_demo_user')?.value;
 
   if (isLiveSupabase) {
     const supabase = createServerClient(supabaseUrl!, supabaseAnonKey!, {
@@ -61,10 +57,19 @@ export async function middleware(request: NextRequest) {
     });
 
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session && !demoCookie) {
+    if (!user) {
+      // If unauthenticated request targets an API endpoint, return 401 Unauthorized
+      if (pathname.startsWith('/api')) {
+        return NextResponse.json(
+          { error: 'Unauthorized: Authentication required.' },
+          { status: 401 }
+        );
+      }
+
+      // If unauthenticated request targets a dashboard UI page, redirect to /login
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = '/login';
       redirectUrl.searchParams.set('redirect', pathname);

@@ -24,19 +24,35 @@ export function Header({ title = 'Command Center', subtitle = 'KRIA TECH Growth 
   );
 
   useEffect(() => {
-    // Read session cookie or local state
-    const match = document.cookie.match(/kria_demo_user=([^;]+)/);
-    if (match && match[1]) {
-      const email = decodeURIComponent(match[1]);
-      const role = email.includes('staff') ? 'staff' : 'owner';
-      setCurrentUser({ email, role });
+    async function loadUser() {
+      if (isSupabaseConfigured) {
+        try {
+          const supabase = createClient();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          if (user) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', user.id)
+              .single();
+
+            setCurrentUser({
+              email: user.email || 'user@kriatech.com',
+              role: (profile?.role as 'owner' | 'staff') || 'staff',
+            });
+          }
+        } catch {
+          // Keep current fallback state
+        }
+      }
     }
-  }, []);
+    loadUser();
+  }, [isSupabaseConfigured]);
 
   async function handleSignOut() {
-    // Clear demo cookie
-    document.cookie = 'kria_demo_user=; path=/; max-age=0; SameSite=Lax';
-
     if (isSupabaseConfigured) {
       const supabase = createClient();
       await supabase.auth.signOut();

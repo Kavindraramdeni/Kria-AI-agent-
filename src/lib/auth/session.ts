@@ -1,6 +1,6 @@
-import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { UserRole } from '@/types/database';
+import { isDemoModeActive } from '@/lib/demo-mode';
 
 export interface UserSession {
   id: string;
@@ -29,54 +29,52 @@ export const DEMO_USERS: Record<string, UserSession> = {
 
 /**
  * Retrieves the current session and user role.
- * Works both with live Supabase Auth and offline demo sessions.
+ * Strictly verifies the session with Supabase Auth on the server.
+ * Never defaults to owner without authentication.
  */
 export async function getServerSession(): Promise<UserSession | null> {
-  const cookieStore = cookies();
-  const demoEmailCookie = cookieStore.get('kria_demo_user')?.value;
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const isSupabaseConfigured = Boolean(
     supabaseUrl && !supabaseUrl.includes('placeholder')
   );
 
-  // If live Supabase is configured, check real session first
+  // If live Supabase is configured, verify real session
   if (isSupabaseConfigured) {
     try {
       const supabase = createClient();
       const {
-        data: { session },
+        data: { user },
         error,
-      } = await supabase.auth.getSession();
+      } = await supabase.auth.getUser();
 
-      if (!error && session?.user) {
-        // Query user's profile for role
+      if (!error && user) {
+        // Query user's profile for role from trusted database
         const { data: profile } = await supabase
           .from('profiles')
           .select('role, full_name')
-          .eq('id', session.user.id)
+          .eq('id', user.id)
           .single();
 
         return {
-          id: session.user.id,
-          email: session.user.email || '',
-          role: (profile?.role as UserRole) || (session.user.user_metadata?.role as UserRole) || 'staff',
-          fullName: profile?.full_name || session.user.user_metadata?.full_name || 'KRIA User',
+          id: user.id,
+          email: user.email || '',
+          role: (profile?.role as UserRole) || (user.user_metadata?.role as UserRole) || 'staff',
+          fullName: profile?.full_name || user.user_metadata?.full_name || 'KRIA User',
           isDemo: false,
         };
       }
     } catch {
-      // Fallback to demo session if Supabase auth call fails
+      // In case of error querying supabase auth
     }
   }
 
-  // Offline / Demo Session resolution
-  if (demoEmailCookie && DEMO_USERS[demoEmailCookie]) {
-    return DEMO_USERS[demoEmailCookie];
+  // Development-only isolated demo mode (strictly opt-in, never active in production)
+  if (process.env.NODE_ENV === 'development' && isDemoModeActive()) {
+    return DEMO_USERS['admin@kriatech.com'];
   }
 
-  // Default demo owner session if no cookie is set in local development
-  return DEMO_USERS['admin@kriatech.com'];
+  // Default: strictly null when unauthenticated
+  return null;
 }
 
 /**
@@ -84,5 +82,6 @@ export async function getServerSession(): Promise<UserSession | null> {
  */
 export async function isAuthorizedOwner(): Promise<boolean> {
   const session = await getServerSession();
-  return session?.role === 'owner' || session?.role === 'admin';
+  if (!session) return false;
+  return session.role === 'owner' || session.role === 'admin';
 }
