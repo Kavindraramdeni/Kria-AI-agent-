@@ -11,6 +11,52 @@ export interface Profile {
 
 export type ProductStatus = 'active' | 'draft' | 'archived';
 
+export type VerificationStatus =
+  | 'verified'
+  | 'unverified'
+  | 'contradictory'
+  | 'needs_owner_confirmation';
+
+export interface WholesaleTiers {
+  storefront_base: number;
+  tier_50: number;
+  tier_100: number;
+  tier_250: number;
+  tier_500: number;
+  tier_1000: number;
+}
+
+export interface SubscriptionProgram {
+  id: string;
+  name: string;
+  price_inr: number;
+  validity_months: number;
+  per_frame_discount_inr: number;
+  priority_dispatch_days: number;
+  terms: string;
+}
+
+export interface ProductCustomizationOptions {
+  storefront_base_price?: number;
+  wholesale_tiers?: WholesaleTiers;
+  subscription_discount_eligible?: boolean;
+  subscription_discount_inr?: number;
+  verification_status?: VerificationStatus;
+  verification_claims?: {
+    clarity?: string;
+    magnet_grade?: string;
+    material_spec?: string;
+    manufacturing_location?: string;
+    [claim: string]: any;
+  };
+  bundle_contents?: {
+    frames_count: number;
+    keychains_count: number;
+    free_air_shipping: boolean;
+  };
+  [key: string]: any;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -20,7 +66,7 @@ export interface Product {
   materials: string[];
   dimensions: string | null;
   available_shapes: string[];
-  customization_options: Record<string, any>;
+  customization_options: ProductCustomizationOptions | Record<string, any>;
   retail_price: number;
   bulk_price: number;
   min_bulk_quantity: number;

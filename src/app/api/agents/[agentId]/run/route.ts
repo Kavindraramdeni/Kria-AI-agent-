@@ -12,6 +12,8 @@ import {
 } from '@/lib/agents/schemas';
 import { AgentId } from '@/types/agent';
 import { logActivity } from '@/lib/services/activity-logs';
+import { calculateWholesaleQuote } from '@/lib/services/pricing-engine';
+import { KRIA_CATALOG_VARIANTS, KRIA_TECH_MANUFACTURING_SPECS } from '@/lib/data/kria-catalog-matrix';
 
 export async function POST(
   req: NextRequest,
@@ -135,34 +137,59 @@ export async function POST(
 
       case 'sales-agent': {
         const leadQty = typeof input === 'object' && input.quantity ? Number(input.quantity) : 50;
-        const isBulk = leadQty >= 20;
-        const unitPrice = isBulk ? 460 : 799;
+        const requestedSku = typeof input === 'object' && input.sku ? String(input.sku) : 'KRA-REC-0604';
+        const hasSubscription = typeof input === 'object' ? Boolean(input.has_subscription) : false;
+
+        // Use calculation engine for exact tier pricing
+        let quoteCalculation;
+        try {
+          quoteCalculation = calculateWholesaleQuote({
+            sku: requestedSku,
+            quantity: leadQty,
+            hasSubscription,
+          });
+        } catch {
+          // Fallback to primary 6x4 magnet frame
+          quoteCalculation = calculateWholesaleQuote({
+            sku: 'KRA-REC-0604',
+            quantity: leadQty,
+            hasSubscription,
+          });
+        }
+
+        const isBulk = !quoteCalculation.is_below_moq;
+        const unitPrice = quoteCalculation.effective_unit_price;
+        const totalAmount = quoteCalculation.final_total_inr;
 
         const rawOutput = {
-          score: isBulk ? 92 : 74,
+          score: isBulk ? (leadQty >= 250 ? 95 : 90) : 65,
           priority: isBulk ? ('high' as const) : ('medium' as const),
           intent_tier: isBulk ? ('Bulk Evaluator' as const) : ('Retail Curious' as const),
           suggested_action: isBulk
-            ? 'Dispatch physical sample box with 5x7 frame and follow up via WhatsApp with tiered wholesale pricing.'
-            : 'Share retail catalog link and offer 10% coupon for first sample order.',
+            ? `Dispatch physical sample box and follow up via WhatsApp with confirmed ${quoteCalculation.tier_applied} quotation.`
+            : `Order is below factory bulk MOQ (${quoteCalculation.min_bulk_quantity} pcs). Suggest Demo Starter Kit (24 pcs for ₹999) or storefront base pricing.`,
           suggested_follow_up_hours: isBulk ? 24 : 48,
-          draft_response_message: `Hello! Thank you for inquiring about KRIA TECH magnetic acrylic frames. Our 5x7 frames are crafted from 24mm solid cast acrylic with N52 corner neodymium magnets and diamond-beveled edges. For your requested volume of ${leadQty} units, our factory wholesale price is ₹${unitPrice}/pc (Total: ₹${(unitPrice * leadQty).toLocaleString()}). May we send a sample piece for your review?`,
+          draft_response_message: isBulk
+            ? `Hello! Thank you for your inquiry for ${leadQty} units of ${quoteCalculation.product_name}. Our Hyderabad factory wholesale rate for ${quoteCalculation.tier_applied} is ₹${unitPrice}/pc (Total: ₹${totalAmount.toLocaleString()}). Manufactured from 2mm monolithic cell-cast acrylic with grade N35 flush neodymium magnets.${hasSubscription ? ' Includes KRIA Subscription VIP discount (-₹2/pc).' : ''} Shall we proceed with dispatch?`
+            : `Hello! For orders under ${quoteCalculation.min_bulk_quantity} units of ${quoteCalculation.product_name}, our storefront base price is ₹${unitPrice}/pc (Total: ₹${totalAmount.toLocaleString()}). For wholesale pricing, our factory MOQ starts at ${quoteCalculation.min_bulk_quantity} pcs, or you can order our KRIA Demo Starter Kit (24 pcs across 4 shapes for just ₹999 all-inclusive).`,
           recommended_quote: {
-            sku: 'MAPF-0507-CL',
+            sku: quoteCalculation.sku,
             quantity: leadQty,
             unit_price_inr: unitPrice,
-            total_inr: unitPrice * leadQty,
-            tier_applied: isBulk ? 'Bulk Wholesale Tier (≥20 units)' : 'Standard Retail Tier',
+            total_inr: totalAmount,
+            tier_applied: quoteCalculation.tier_applied,
           },
-          reasoning_summary:
-            'Evaluated buyer purchasing volume against KRIA TECH wholesale thresholds. High-intent inquiry requiring prompt quotation follow-up.',
-          sources: ['KRIA TECH Wholesale Price Matrix 2026'],
+          reasoning_summary: `Authoritative factory quote calculated using KRIA TECH pricing matrix for ${quoteCalculation.tier_applied}.${quoteCalculation.is_below_moq ? ' Flagged as below factory MOQ.' : ''}`,
+          sources: ['KRIA TECH Hyderabad Wholesale Matrix 2026'],
           verified_facts: [
-            `Standard bulk MOQ for MAPF-0507-CL is 20 units.`,
-            `Retail price: ₹799 | Wholesale price: ₹460.`,
+            `Manufacturer location: ${KRIA_TECH_MANUFACTURING_SPECS.location}`,
+            `Material standard: ${KRIA_TECH_MANUFACTURING_SPECS.material} (${KRIA_TECH_MANUFACTURING_SPECS.optical_clarity})`,
+            `Magnet spec: ${KRIA_TECH_MANUFACTURING_SPECS.magnet_spec}`,
+            `Applied unit price: ₹${unitPrice} (${quoteCalculation.tier_applied})`,
           ],
           assumptions: [
-            'Buyer requires delivery within standard 3-5 business day timeframe.',
+            hasSubscription ? 'Customer holds active KRIA VIP Subscription.' : 'Customer does not hold KRIA VIP Subscription.',
+            'Payment terms: 100% advance before dispatch on custom laser jobs.',
           ],
         };
         validatedOutput = SalesAgentOutputSchema.parse(rawOutput);
