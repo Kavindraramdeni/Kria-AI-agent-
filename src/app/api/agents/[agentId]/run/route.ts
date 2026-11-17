@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAgentById } from '@/lib/agents/framework';
 import { KRIA_MANUFACTURING_FACTS } from '@/lib/agents/guardrails';
+import { checkRateLimit } from '@/lib/services/rate-limit';
 import {
   SEOAgentOutputSchema,
   ContentAgentOutputSchema,
@@ -24,6 +25,26 @@ export async function POST(
       return NextResponse.json(
         { error: `Agent '${params.agentId}' not found.` },
         { status: 404 }
+      );
+    }
+
+    // Rate Limiting Check (30 calls per minute)
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'local-client';
+    const rateCheck = checkRateLimit(`agent_${clientIp}`, 30, 60);
+
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded for agent execution. Please wait before retrying.',
+          reset_seconds: rateCheck.resetSeconds,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateCheck.resetSeconds),
+            'X-RateLimit-Remaining': '0',
+          },
+        }
       );
     }
 

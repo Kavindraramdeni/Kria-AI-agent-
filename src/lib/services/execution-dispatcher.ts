@@ -9,25 +9,42 @@ export interface DispatchResult {
   action_type: string;
   destination: string;
   executed_at?: string;
+  idempotency_key?: string;
   error?: string;
-  error_code?: 'ALREADY_EXECUTED' | 'NOT_APPROVED' | 'CONCURRENCY_LOCKED' | 'NOT_FOUND' | 'DATABASE_ERROR';
+  error_code?:
+    | 'ALREADY_EXECUTED'
+    | 'NOT_APPROVED'
+    | 'CONCURRENCY_LOCKED'
+    | 'NOT_FOUND'
+    | 'DATABASE_ERROR'
+    | 'CRITICAL_ACTION_RESTRICTED';
   dispatch_payload?: Record<string, any>;
 }
 
 // In-memory Mutex lock set to prevent concurrent TOCTOU race conditions
 const activeDispatchLocks = new Set<string>();
 
+// Idempotency cache: stores previous execution results mapped to idempotency keys
+const idempotencyStore = new Map<string, DispatchResult>();
+
 /**
  * Server-Side Execution Dispatcher
  * Critical Security Gate: Strictly enforces that actions can ONLY execute
  * if their status is currently 'approved' and has not already been executed.
- * Protects against replayed requests and simultaneous concurrent race conditions.
+ * Protects against replayed requests, concurrent race conditions, and unauthorized critical actions.
+ * Supports idempotency keys for safe retries.
  */
 export async function executeApprovedAction(
   approvalId: string,
-  actorEmail: string = 'admin@kriatech.com'
+  actorEmail: string = 'admin@kriatech.com',
+  idempotencyKey?: string
 ): Promise<DispatchResult> {
-  // CONCURRENCY LOCK CHECK: Prevent simultaneous duplicate requests
+  // 1. IDEMPOTENCY CHECK: If already executed with the same key, return identical receipt safely
+  if (idempotencyKey && idempotencyStore.has(idempotencyKey)) {
+    return idempotencyStore.get(idempotencyKey)!;
+  }
+
+  // 2. CONCURRENCY LOCK CHECK: Prevent simultaneous duplicate requests
   if (activeDispatchLocks.has(approvalId)) {
     return {
       success: false,
@@ -82,7 +99,7 @@ export async function executeApprovedAction(
       };
     }
 
-    // RE-CHECK GATE 1: Single-use check (Prevent double-execution / replay)
+    // 3. RE-CHECK GATE 1: Single-use check (Prevent double-execution / replay)
     if (item.executed_at || item.status === 'executed') {
       return {
         success: false,
@@ -94,7 +111,7 @@ export async function executeApprovedAction(
       };
     }
 
-    // RE-CHECK GATE 2: Must be explicitly approved
+    // 4. RE-CHECK GATE 2: Must be explicitly approved
     if (item.status !== 'approved') {
       return {
         success: false,
@@ -106,16 +123,30 @@ export async function executeApprovedAction(
       };
     }
 
+    // 5. CRITICAL-ACTION SAFEGUARD: Only Owner/Admin can dispatch critical-risk actions
+    if (item.risk_level === 'critical') {
+      const isOwner = actorEmail.includes('admin') || actorEmail.includes('owner');
+      if (!isOwner) {
+        return {
+          success: false,
+          approval_id: approvalId,
+          action_type: item.action_type,
+          destination: item.destination,
+          error_code: 'CRITICAL_ACTION_RESTRICTED',
+          error: 'SECURITY GATE REJECTION: Critical-risk actions (ad spend, live website changes) require Owner authorization.',
+        };
+      }
+    }
+
     const executedAt = new Date().toISOString();
 
-    // Update status to 'executed' atomically
+    // 6. Update status to 'executed' atomically
     if (isDemo) {
       item.status = 'executed';
       item.executed_at = executedAt;
       item.updated_at = executedAt;
     } else {
       const supabase = createClient();
-      // Atomic conditional update in database: Only update if still approved and not yet executed
       const { data: updated, error: updateError } = await supabase
         .from('approval_requests')
         .update({
@@ -140,7 +171,7 @@ export async function executeApprovedAction(
       }
     }
 
-    // Record audit log with cryptographic hash
+    // 7. Record audit log with cryptographic SHA-256 hash
     await logActivity({
       entity_type: 'approval_execution',
       entity_id: approvalId,
@@ -153,17 +184,26 @@ export async function executeApprovedAction(
         destination: item.destination,
         risk_level: item.risk_level,
         executed_at: executedAt,
+        idempotency_key: idempotencyKey,
       },
     });
 
-    return {
+    const result: DispatchResult = {
       success: true,
       approval_id: approvalId,
       action_type: item.action_type,
       destination: item.destination,
       executed_at: executedAt,
+      idempotency_key: idempotencyKey,
       dispatch_payload: item.proposed_content,
     };
+
+    // Store in idempotency cache
+    if (idempotencyKey) {
+      idempotencyStore.set(idempotencyKey, result);
+    }
+
+    return result;
   } finally {
     // Release concurrency lock
     activeDispatchLocks.delete(approvalId);

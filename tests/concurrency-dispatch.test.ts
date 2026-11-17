@@ -22,7 +22,7 @@ describe('Concurrency and Race Condition Security Hardening', () => {
 
     // Fire 10 simultaneous concurrent execution attempts at the exact same time
     const concurrentAttempts = Array.from({ length: 10 }).map((_, i) =>
-      executeApprovedAction(id, `actor_${i}@kriatech.com`)
+      executeApprovedAction(id, `admin_${i}@kriatech.com`)
     );
 
     const results = await Promise.all(concurrentAttempts);

@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Database, Sparkles, UserCheck } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Database, Sparkles, UserCheck, LogOut, Shield } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 interface HeaderProps {
   title?: string;
@@ -10,10 +12,39 @@ interface HeaderProps {
 }
 
 export function Header({ title = 'Command Center', subtitle = 'KRIA TECH Growth & Operations' }: HeaderProps) {
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<{ email: string; role: 'owner' | 'staff' }>({
+    email: 'admin@kriatech.com',
+    role: 'owner',
+  });
+
   const isSupabaseConfigured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
     !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
   );
+
+  useEffect(() => {
+    // Read session cookie or local state
+    const match = document.cookie.match(/kria_demo_user=([^;]+)/);
+    if (match && match[1]) {
+      const email = decodeURIComponent(match[1]);
+      const role = email.includes('staff') ? 'staff' : 'owner';
+      setCurrentUser({ email, role });
+    }
+  }, []);
+
+  async function handleSignOut() {
+    // Clear demo cookie
+    document.cookie = 'kria_demo_user=; path=/; max-age=0; SameSite=Lax';
+
+    if (isSupabaseConfigured) {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    }
+
+    router.push('/login');
+    router.refresh();
+  }
 
   return (
     <header className="h-16 border-b border-kria-border bg-kria-900/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
@@ -65,15 +96,41 @@ export function Header({ title = 'Command Center', subtitle = 'KRIA TECH Growth 
           </Link>
         </div>
 
-        {/* User Avatar */}
+        {/* User Session & Role Badge */}
         <div className="flex items-center gap-2 pl-2 border-l border-kria-border">
           <div className="h-8 w-8 rounded-full bg-kria-800 border border-kria-border flex items-center justify-center text-slate-300">
-            <UserCheck className="h-4 w-4 text-electric-light" />
+            {currentUser.role === 'owner' ? (
+              <Shield className="h-4 w-4 text-electric-light" />
+            ) : (
+              <UserCheck className="h-4 w-4 text-amber-400" />
+            )}
           </div>
           <div className="hidden lg:block text-left">
-            <p className="text-xs font-medium text-slate-200">Owner Workspace</p>
-            <p className="text-[10px] text-slate-400">admin@kriatech.com</p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-slate-200">
+                {currentUser.role === 'owner' ? 'Owner Workspace' : 'Staff Workspace'}
+              </span>
+              <span
+                className={`text-[9px] font-bold px-1.5 py-0.2 rounded uppercase ${
+                  currentUser.role === 'owner'
+                    ? 'bg-electric/20 text-electric-light border border-electric/30'
+                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                }`}
+              >
+                {currentUser.role}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400">{currentUser.email}</p>
           </div>
+
+          <button
+            onClick={handleSignOut}
+            title="Sign Out"
+            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-kria-800 rounded-lg transition-colors ml-1"
+            aria-label="Sign Out"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </header>
