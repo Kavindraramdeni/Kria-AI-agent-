@@ -114,7 +114,7 @@ export default function ProductsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const categories = ['all', 'Photo Frames', 'Keychains', 'Signage', 'MDF Products'];
+  const categories = ['all', ...Array.from(new Set(products.map((p) => p.category)))];
 
   return (
     <>
@@ -191,7 +191,13 @@ export default function ProductsPage() {
                     </span>
                     <div className="flex items-center gap-1.5">
                       {prod.is_demo && <DemoBadge />}
-                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase border ${
+                          prod.status === 'active'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                        }`}
+                      >
                         {prod.status}
                       </span>
                     </div>
