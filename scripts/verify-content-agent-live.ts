@@ -44,9 +44,12 @@ async function main() {
   console.log('Model Name:', result.model_name);
   console.log('Saved Content ID (Supabase):', result.saved_content_id);
   console.log('Approval Request ID:', result.approval_id);
+  console.log('Conflicts Detected:', result.conflicts_detected);
   console.log('\n--- Model Output ---');
   console.log('Title:', result.output?.title);
-  console.log('Verified Facts:', result.output?.verified_facts);
+  console.log('Verified Facts (Ground Truth Only):', result.output?.verified_facts);
+  console.log('User-Provided Claims:', result.output?.user_provided_claims);
+  console.log('AI-Generated Suggestions:', result.output?.ai_generated_suggestions);
   console.log('Sources:', result.output?.sources);
   console.log('Suggested CTA:', result.output?.suggested_cta);
   console.log('Keywords:', result.output?.keywords_used);

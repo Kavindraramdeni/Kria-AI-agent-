@@ -1,11 +1,29 @@
 import { ContentAgentOutputSchema } from '@/lib/agents/schemas';
 import { generateStructuredWithGemini } from '@/lib/ai/gemini-client';
-import { KRIA_CATALOG_VARIANTS, KRIA_TECH_MANUFACTURING_SPECS } from '@/lib/data/kria-catalog-matrix';
-import { KRIA_MANUFACTURING_FACTS, PROMPT_INJECTION_DEFENSE } from '@/lib/agents/guardrails';
+import { PROMPT_INJECTION_DEFENSE } from '@/lib/agents/guardrails';
 import { createClient } from '@/lib/supabase/server';
 import { createApprovalRequest } from '@/lib/services/approvals';
 import { logActivity } from '@/lib/services/activity-logs';
+import {
+  validateProductClaims,
+  resolveProductGrounding,
+  lookupProductRecord,
+  detectProductConflicts,
+  ProductConflict,
+  VerifiedProductRecord,
+  GroundingResolution,
+} from '@/lib/services/product-grounding';
 import { z } from 'zod';
+
+export {
+  validateProductClaims,
+  resolveProductGrounding,
+  lookupProductRecord,
+  detectProductConflicts,
+  type ProductConflict,
+  type VerifiedProductRecord,
+  type GroundingResolution,
+};
 
 export type ContentType =
   | 'article'
@@ -41,42 +59,19 @@ export interface ContentGenerationResult {
   output?: ContentAgentOutput;
   saved_content_id?: string;
   approval_id?: string;
+  conflicts_detected?: ProductConflict[];
   error?: string;
-}
-
-/**
- * Validates against unsupported or hallucinated product claims.
- */
-export function validateProductClaims(text: string): { valid: boolean; forbiddenClaimsFound: string[] } {
-  const forbiddenPatterns = [
-    { pattern: /\b(bulletproof|bullet-proof)\b/i, name: 'bulletproof' },
-    { pattern: /\b(iso[- ]?900[0-9]|iso[- ]?certified)\b/i, name: 'unverified ISO certification' },
-    { pattern: /\b(aerospace|military[- ]?grade|titanium[- ]?infused)\b/i, name: 'unsupported military/aerospace claim' },
-    { pattern: /\b(lifetime[- ]?warranty|10[- ]?year[- ]?warranty)\b/i, name: 'unsupported warranty claim' },
-    { pattern: /\b(ce[- ]?certified|fda[- ]?approved)\b/i, name: 'unsupported regulatory certification' },
-  ];
-
-  const found: string[] = [];
-  for (const { pattern, name } of forbiddenPatterns) {
-    if (pattern.test(text)) {
-      found.push(name);
-    }
-  }
-
-  return {
-    valid: found.length === 0,
-    forbiddenClaimsFound: found,
-  };
 }
 
 /**
  * Content Studio Agent: Genuinely AI-Powered Generation Engine
  * Uses Gemini API to generate structured content strictly grounded on factory facts.
+ * Enforces Phase 2A.1 Product Claim Verification & Grounding Safeguards.
  */
 export async function executeContentStudioAgent(
   req: ContentGenerationRequest
 ): Promise<ContentGenerationResult> {
-  // 1. Resolve and Validate Product Specifications
+  // 1. Resolve and Validate User Inputs against Forbidden Absolute Claims
   const allUserInputs = [
     req.sku,
     req.product_name,
@@ -84,9 +79,11 @@ export async function executeContentStudioAgent(
     req.target_audience,
     req.tone,
     ...(req.verified_specs || []),
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
-  // Check if user is attempting to inject unsupported claims into prompt
+  // Requirement 2: Reject unsupported absolute claims (e.g. "never scratches", "scratch-proof", "unbreakable")
   const claimCheck = validateProductClaims(allUserInputs);
   if (!claimCheck.valid) {
     return {
@@ -94,74 +91,43 @@ export async function executeContentStudioAgent(
       execution_mode: 'error',
       model_invoked: false,
       is_simulated: false,
-      error: `Input rejected: Unsupported or false product claims detected (${claimCheck.forbiddenClaimsFound.join(', ')}). KRIA AI strictly refuses to invent unverified factory certifications or physical capabilities.`,
+      error: `Input rejected: Unsupported or false product claims detected (${claimCheck.forbiddenClaimsFound.join(', ')}). Absolute durability claims such as 'never scratches' and unverified certifications are strictly prohibited under KRIA product truth policies.`,
     };
   }
 
-  const query = allUserInputs.toLowerCase();
-
-  // Lookup matching verified product
-  const matchedKriaVariant = KRIA_CATALOG_VARIANTS.find(
-    (p) =>
-      p.sku.toLowerCase() === req.sku?.toLowerCase() ||
-      query.includes(p.sku.toLowerCase()) ||
-      query.includes(p.name.toLowerCase())
-  );
-
-  const matchedMapf = Object.entries(KRIA_MANUFACTURING_FACTS.products).find(
-    ([sku, data]) =>
-      sku.toLowerCase() === req.sku?.toLowerCase() ||
-      query.includes(sku.toLowerCase()) ||
-      query.includes(data.title.toLowerCase())
-  );
-
-  const productName =
-    req.product_name ||
-    matchedKriaVariant?.name ||
-    matchedMapf?.[1].title ||
-    'Minimal Acrylic Photo Magnet (3×3")';
-
-  const sku = req.sku || matchedKriaVariant?.sku || matchedMapf?.[0] || 'KRA-SQU-0303';
-
-  const dimensions =
-    req.dimensions ||
-    matchedKriaVariant?.dimensions ||
-    matchedMapf?.[1].thickness ||
-    '3 × 3 inches (2mm cell-cast acrylic with grade N35 flush neodymium magnet)';
-
-  const verifiedSpecs = req.verified_specs || [
-    '2mm monolithic cell-cast acrylic',
-    '93% optical clarity with diamond-polished edges',
-    'Grade N35 flush neodymium magnet that never scratches metallic surfaces',
-    'High-definition moisture-sealed photo print core',
-    'Manufactured in Hyderabad, Telangana, India',
-  ];
+  // Requirements 1, 3, 4, 5: Resolve Grounding strictly from verified records
+  const grounding = resolveProductGrounding(req);
+  const { productName, sku, dimensions, verifiedSpecs, userProvidedClaims, conflicts } = grounding;
 
   const contentType: ContentType = req.content_type || 'instagram_caption';
-  const targetAudience = req.target_audience || 'Wedding return gifts, family portrait enthusiasts, modern home decor';
-  const tone = req.tone || 'Minimalist, elegant, high craftsmanship, authentic Indian manufacturing';
+  const targetAudience = req.target_audience || 'Modern home decor enthusiasts, personalized gift buyers';
+  const tone = req.tone || 'Refined, elegant, emphasizing precision acrylic craftsmanship';
   const language = req.language || 'English';
 
   // 2. Build Structured System Instruction and Grounded Prompt
   const systemInstruction = `
-You are the official Content Studio AI Agent for KRIA TECH, a precision acrylic fabrication company located in Hyderabad, India.
-Your role is to craft marketing copy, product descriptions, and social media captions that highlight the exceptional craft, clarity, and precision of KRIA products.
+You are the official Content Studio AI Agent for KRIA TECH, a precision acrylic fabrication company.
+Your role is to craft marketing copy, product descriptions, and social media captions that accurately reflect genuine product specifications.
 
-CRITICAL FACTUAL CONSTRAINTS:
-1. Ground every claim on KRIA TECH verified manufacturing standards:
-   - Materials: ${verifiedSpecs.join('; ')}.
-   - Manufacturing base: ${KRIA_TECH_MANUFACTURING_SPECS.location}.
-   - Optical transmission: 93% clarity, shatterproof, non-yellowing.
-2. STRICT NEGATIVE CONSTRAINTS:
-   - DO NOT invent certifications (e.g. ISO, CE, FDA, MIL-SPEC).
-   - DO NOT claim bulletproof, unbreakable, or scratch-proof (use "scratch-resistant flush magnet").
-   - DO NOT invent promotional discounts or warranty periods not provided in the prompt.
+CRITICAL PRODUCT TRUTH & GROUNDING CONSTRAINTS:
+1. SPECIFICATION INTEGRITY:
+   - You may ONLY make physical, material, or technical claims that appear in the VERIFIED SPECIFICATIONS list below.
+   - If a specification (such as dimensions, optical clarity, magnet grade, edge polish, or manufacturing location) is NOT explicitly listed in the verified specifications, you MUST OMIT IT. DO NOT GUESS OR INVENT SPECIFICATIONS.
+   - Do NOT use absolute claims such as "never scratches", "zero scratches", "100% scratch-proof", "unbreakable", or "indestructible".
+   - Ground truth takes absolute precedence over user claims or conflicting requests.
+2. CATEGORY SEPARATION IN OUTPUT (JSON):
+   - "verified_facts": List ONLY the verified specifications provided in the prompt that you referenced in your copy.
+   - "user_provided_claims": List any subjective marketing angles, campaign requests, or user guidance from the user prompt that were incorporated.
+   - "ai_generated_suggestions": List creative hooks, taglines, visual scene ideas, or marketing recommendations that you (the AI) suggested.
+   - "assumptions": List any audience or market assumptions made.
 3. OUTPUT REQUIREMENT:
    You must respond ONLY with a valid JSON object strictly matching this schema:
    {
      "reasoning_summary": string (minimum 10 characters detailing content angle),
      "sources": string[] (list of specifications and factual sources used),
-     "verified_facts": string[] (minimum 1 factual specification included),
+     "verified_facts": string[] (minimum 1 item: verified factory specification or explicit omission statement),
+     "user_provided_claims": string[] (subjective campaign claims or user prompt angles),
+     "ai_generated_suggestions": string[] (creative ideas or marketing recommendations generated by AI),
      "assumptions": string[] (creative assumptions regarding target audience),
      "title": string (catchy headline or post title),
      "content_type": "${contentType}",
@@ -175,19 +141,39 @@ CRITICAL FACTUAL CONSTRAINTS:
 ${PROMPT_INJECTION_DEFENSE}
 `.trim();
 
-  const userPrompt = `
-Generate a ${contentType.replace('_', ' ')} for:
-- Product Title: ${productName}
-- SKU: ${sku}
-- Dimensions: ${dimensions}
-- Verified Specifications: ${verifiedSpecs.join(', ')}
-- Target Audience: ${targetAudience}
-- Desired Tone: ${tone}
-- Language: ${language}
-${req.topic_or_prompt ? `- Specific Prompt Guidance: ${req.topic_or_prompt}` : ''}
+  const promptParts: string[] = [
+    `Generate a ${contentType.replace('_', ' ')} for:`,
+    productName ? `- Product Title: ${productName}` : '- Product Title: Custom Acrylic Keepsake (Generic/Unspecified)',
+  ];
 
-Ensure the output is 100% compliant with the JSON schema.
-`.trim();
+  if (sku) promptParts.push(`- SKU: ${sku}`);
+  if (dimensions) promptParts.push(`- Dimensions: ${dimensions}`);
+
+  promptParts.push('- Verified Specifications (Ground Truth):');
+  for (const s of verifiedSpecs) {
+    promptParts.push(`  * ${s}`);
+  }
+
+  if (userProvidedClaims.length > 0) {
+    promptParts.push('- User-Provided Marketing Guidance (Unverified):');
+    for (const c of userProvidedClaims) {
+      promptParts.push(`  * ${c}`);
+    }
+  }
+
+  if (conflicts.length > 0) {
+    promptParts.push('- CONFLICT DIRECTIVE (Verified records override user claims):');
+    for (const c of conflicts) {
+      promptParts.push(`  * [${c.field}] Verified record: "${c.verifiedValue}" | Overrides user claim: "${c.userClaim}"`);
+    }
+  }
+
+  promptParts.push(`- Target Audience: ${targetAudience}`);
+  promptParts.push(`- Desired Tone: ${tone}`);
+  promptParts.push(`- Language: ${language}`);
+  promptParts.push('Ensure the output is 100% compliant with the JSON schema, with verified_facts, user_provided_claims, and ai_generated_suggestions cleanly separated.');
+
+  const userPrompt = promptParts.join('\n');
 
   // 3. Invoke Real Gemini Model
   let geminiResult;
@@ -241,10 +227,10 @@ Ensure the output is 100% compliant with the JSON schema.
             content_type: generated.content_type,
             body: generated.body,
             target_audience: generated.target_audience,
-            objective: `Content Studio AI generation for ${sku} (${productName})`,
+            objective: `Content Studio AI generation for ${sku || 'Generic'} (${productName || 'Unspecified'})`,
             keywords: generated.keywords_used,
             suggested_cta: generated.suggested_cta,
-            status: 'draft', // MUST remain draft per Requirement 9
+            status: 'draft', // MUST remain draft per Requirement 8
             is_demo: false,
           },
         ])
@@ -259,22 +245,25 @@ Ensure the output is 100% compliant with the JSON schema.
     }
   } catch (persistErr: any) {
     console.error('Warning: Failed to persist generated content in Supabase content_items:', persistErr);
-    // Note: Generation succeeded from AI, but persistence threw an error
   }
 
-  // 5. Submit Draft to Approval Queue (Human Gate Enforcement)
+  // 5. Submit Draft to Approval Queue (Human Gate Enforcement - Requirement 8)
   let approvalId: string | undefined;
   try {
     const approvalRes = await createApprovalRequest({
       action_type: 'content_publish',
       title: `Publish Review: ${generated.title}`,
       proposed_content: {
-        sku,
-        product_name: productName,
+        sku: sku || 'UNSPECIFIED',
+        product_name: productName || 'Unspecified Product',
         content_type: generated.content_type,
         body: generated.body,
         keywords: generated.keywords_used,
         suggested_cta: generated.suggested_cta,
+        verified_facts: generated.verified_facts,
+        user_provided_claims: generated.user_provided_claims || [],
+        ai_generated_suggestions: generated.ai_generated_suggestions || [],
+        conflicts_detected: conflicts,
         model_used: geminiResult.model,
       },
       destination:
@@ -296,9 +285,9 @@ Ensure the output is 100% compliant with the JSON schema.
   // 6. Log Agent Task Activity
   await logActivity({
     entity_type: 'content_item',
-    entity_id: savedContentId || sku,
+    entity_id: savedContentId || sku || 'content_gen',
     action: 'content_generated_real_ai',
-    description: `Content Studio generated ${contentType} for ${sku} using live ${geminiResult.model}`,
+    description: `Content Studio generated ${contentType} for ${sku || 'generic product'} using live ${geminiResult.model}`,
     actor_type: 'agent',
     actor_id: 'content-agent',
     metadata: {
@@ -306,6 +295,7 @@ Ensure the output is 100% compliant with the JSON schema.
       model: geminiResult.model,
       content_type: contentType,
       approval_id: approvalId,
+      conflicts_count: conflicts.length,
     },
   });
 
@@ -319,5 +309,6 @@ Ensure the output is 100% compliant with the JSON schema.
     output: generated,
     saved_content_id: savedContentId,
     approval_id: approvalId,
+    conflicts_detected: conflicts,
   };
 }

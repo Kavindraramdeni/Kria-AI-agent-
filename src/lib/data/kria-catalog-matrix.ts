@@ -9,7 +9,7 @@ export const KRIA_TECH_MANUFACTURING_SPECS = {
   optical_clarity: '93% optical clarity',
   shatterproof: true,
   non_yellowing: true,
-  magnet_spec: 'Grade N35 rare-earth flush countersunk neodymium magnet (scratch-proof for metallic/fridge surfaces)',
+  magnet_spec: 'Grade N35 rare-earth flush countersunk neodymium magnet (countersunk to minimize contact friction on metallic surfaces)',
   keychain_hardware: '360° rotating chrome swivel key ring',
   print_process: 'High-definition moisture-sealed photo print lamination',
 } as const;
@@ -47,7 +47,7 @@ export const KRIA_CATALOG_VARIANTS: Omit<Product, 'id' | 'created_at' | 'updated
     status: 'draft',
     is_demo: false,
     seo_keywords: ['mini acrylic photo magnet', '2x2 fridge magnet wholesale', 'custom photo grid magnets'],
-    production_notes: 'Diamond-polished edges, high-definition photo print lamination, moisture-sealed, flush-mounted magnet that never scratches metallic surfaces.',
+    production_notes: 'Diamond-polished edges, high-definition photo print lamination, moisture-sealed, flush-mounted magnet designed to minimize contact friction on metallic surfaces.',
     image_url: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80',
     customization_options: {
       storefront_base_price: 49,
@@ -84,7 +84,7 @@ export const KRIA_CATALOG_VARIANTS: Omit<Product, 'id' | 'created_at' | 'updated
     status: 'draft',
     is_demo: false,
     seo_keywords: ['3x3 square acrylic magnet', 'custom photo fridge frame', 'personalized acrylic fridge magnet'],
-    production_notes: 'Diamond-polished beveled edges, high-definition photo print lamination, moisture-sealed, flush-mounted magnet that never scratches metallic surfaces.',
+    production_notes: 'Diamond-polished beveled edges, high-definition photo print lamination, moisture-sealed, flush-mounted magnet designed to minimize contact friction on metallic surfaces.',
     image_url: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=600&q=80',
     customization_options: {
       storefront_base_price: 65,

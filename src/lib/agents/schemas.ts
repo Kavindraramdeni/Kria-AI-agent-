@@ -42,6 +42,8 @@ export const ContentAgentOutputSchema = BaseAgentOutputSchema.extend({
   suggested_cta: z.string(),
   keywords_used: z.array(z.string()),
   recommended_visuals: z.string(),
+  user_provided_claims: z.array(z.string()).default([]),
+  ai_generated_suggestions: z.array(z.string()).default([]),
 });
 
 // 3. Sales Lead Agent Output Schema
