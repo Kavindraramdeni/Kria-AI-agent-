@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import { Header } from '@/components/layout/header';
 import { DemoBadge } from '@/components/ui/demo-badge';
 import { DEMO_SEO_KEYWORDS } from '@/lib/demo-data';
+import { createApprovalRequest } from '@/lib/services/approvals';
 import { SEOKeyword } from '@/types/database';
-import { Search, Plus, AlertCircle } from 'lucide-react';
+import { Search, Plus, AlertCircle, Globe, Sparkles, CheckCircle2, ShieldAlert } from 'lucide-react';
 
 export default function SEOStudioPage() {
   const [keywords, setKeywords] = useState<SEOKeyword[]>(DEMO_SEO_KEYWORDS);
@@ -14,6 +15,12 @@ export default function SEOStudioPage() {
   const [intent, setIntent] = useState<'commercial' | 'transactional' | 'informational'>('commercial');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('high');
   const [cluster] = useState('Magnetic Frames');
+
+  // Website Audit State
+  const [auditUrl, setAuditUrl] = useState('https://kriatech.com/products/acrylic-frames');
+  const [auditing, setAuditing] = useState(false);
+  const [auditResult, setAuditResult] = useState<any | null>(null);
+  const [proposalSent, setProposalSent] = useState(false);
 
   function handleAddKeyword(e: React.FormEvent) {
     e.preventDefault();
@@ -27,7 +34,7 @@ export default function SEOStudioPage() {
       priority,
       target_page: '/products/magnetic-acrylic-frames',
       status: 'targeted',
-      verified_search_volume: null, // Transparently null until real API is connected
+      verified_search_volume: null,
       source: 'manual',
       is_demo: false,
       created_at: new Date().toISOString(),
@@ -38,6 +45,56 @@ export default function SEOStudioPage() {
     setNewKeyword('');
   }
 
+  async function handleRunAudit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!auditUrl.trim()) return;
+
+    setAuditing(true);
+    setAuditResult(null);
+    setProposalSent(false);
+
+    try {
+      const res = await fetch('/api/agents/website-agent/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: auditUrl, task_type: 'on_page_audit' }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAuditResult(data.output);
+      } else {
+        alert(data.error || 'Failed to complete website audit.');
+      }
+    } catch (err: any) {
+      console.error('Audit agent error:', err);
+      alert('Could not connect to website audit agent.');
+    } finally {
+      setAuditing(false);
+    }
+  }
+
+  async function handleSendWebsiteProposal() {
+    if (!auditResult) return;
+
+    const res = await createApprovalRequest({
+      action_type: 'website_change',
+      title: `Proposed SEO & UX Updates for ${auditUrl}`,
+      proposed_content: {
+        target_url: auditUrl,
+        issues: auditResult.detected_issues,
+        mobile_ux_notes: auditResult.mobile_ux_notes,
+      },
+      destination: `KRIA TECH Live Website (${auditUrl})`,
+      agent_id: 'website-agent',
+      risk_level: 'high',
+    });
+
+    if (res.success) {
+      setProposalSent(true);
+    }
+  }
+
   const filtered = keywords.filter((k) =>
     k.keyword.toLowerCase().includes(search.toLowerCase()) ||
     (k.cluster && k.cluster.toLowerCase().includes(search.toLowerCase()))
@@ -46,8 +103,8 @@ export default function SEOStudioPage() {
   return (
     <>
       <Header
-        title="SEO Strategy & Keyword Studio"
-        subtitle="Organic search visibility, high-intent clusters and keyword targeting for KRIA TECH"
+        title="SEO Strategy & Website Health Studio"
+        subtitle="Organic search visibility, high-intent clusters and landing page audits for KRIA TECH"
       />
 
       <main className="p-6 max-w-7xl mx-auto w-full space-y-6">
@@ -57,11 +114,97 @@ export default function SEOStudioPage() {
             <AlertCircle className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-semibold text-white text-sm">Truth in Search Data</h3>
+            <h3 className="font-semibold text-white text-sm">Truth in Search Data & Website Safety</h3>
             <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              In strict accordance with KRIA AI guidelines, search volumes and ranking positions are never fabricated. Seed volumes reflect baseline industry benchmarks, and live Google Search Console integration can be activated via Settings once OAuth credentials are configured.
+              In strict accordance with KRIA AI guidelines, search volumes and ranking positions are never fabricated. Website audits analyze public structure and generate proposals for review; no automated script directly modifies the live KRIA website without passing the Human Approval Gate.
             </p>
           </div>
+        </div>
+
+        {/* Website Landing Page Audit Module */}
+        <div className="p-5 rounded-xl bg-kria-card border border-kria-border shadow-card space-y-4">
+          <div>
+            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <Globe className="h-4 w-4 text-electric-light" />
+              Landing Page SEO & UX Audit Agent
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Scan target product URLs for missing Schema markup, mobile conversion barriers, and optical specification proof.
+            </p>
+          </div>
+
+          <form onSubmit={handleRunAudit} className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="url"
+              required
+              value={auditUrl}
+              onChange={(e) => setAuditUrl(e.target.value)}
+              placeholder="https://kriatech.com/products/magnetic-acrylic-frames"
+              className="flex-1 px-3.5 py-2.5 rounded-lg bg-kria-850 border border-kria-border text-xs text-white focus:outline-none focus:border-electric"
+            />
+            <button
+              type="submit"
+              disabled={auditing}
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-semibold bg-electric hover:bg-electric-dark text-white disabled:opacity-50 shadow-glow flex-shrink-0"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {auditing ? 'Scanning Page...' : 'Run On-Page Audit'}
+            </button>
+          </form>
+
+          {/* Audit Results */}
+          {auditResult && (
+            <div className="p-4 rounded-xl bg-kria-surface border border-kria-border text-xs space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-kria-border">
+                <div>
+                  <span className="font-bold text-white text-sm block">{auditResult.page_title}</span>
+                  <span className="text-[11px] text-slate-400">{auditResult.target_url}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 block">SEO & UX Score</span>
+                  <span className="text-lg font-bold text-emerald-400">{auditResult.seo_score}/100</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <span className="font-bold text-slate-300 block">Identified Opportunities & Recommendations:</span>
+                {auditResult.detected_issues?.map((iss: any, i: number) => (
+                  <div key={i} className="p-2.5 rounded-lg bg-kria-850 border border-kria-border/60 flex items-start justify-between gap-3">
+                    <div>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded uppercase mr-2 ${
+                        iss.severity === 'high' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'
+                      }`}>
+                        {iss.severity}
+                      </span>
+                      <strong className="text-white">{iss.issue}</strong>
+                      <p className="text-slate-400 mt-1 text-[11px]">Recommended Fix: {iss.fix}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-kria-border">
+                <p className="text-[11px] text-slate-400">
+                  Submitting will create a formal proposal in the Approval Center for webmaster review.
+                </p>
+
+                {proposalSent ? (
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Proposal Sent to Approval Queue
+                  </span>
+                ) : (
+                  <button
+                    onClick={handleSendWebsiteProposal}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white transition-colors"
+                  >
+                    <ShieldAlert className="h-3.5 w-3.5" />
+                    Submit Proposal to Approval Gate
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Quick Add Keyword Form */}

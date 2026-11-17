@@ -3,12 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import { Header } from '@/components/layout/header';
 import { getApprovals, updateApprovalStatus } from '@/lib/services/approvals';
+import { executeApprovedAction } from '@/lib/services/execution-dispatcher';
 import { logActivity } from '@/lib/services/activity-logs';
 import { ApprovalRequest, ApprovalStatus } from '@/types/approval';
 import {
   ShieldCheck,
   CheckCircle,
-  Lock
+  Lock,
+  Zap
 } from 'lucide-react';
 
 export default function ApprovalsPage() {
@@ -49,6 +51,17 @@ export default function ApprovalsPage() {
       setSelectedItem(null);
       setRevisionNotes('');
       loadApprovals();
+    }
+  }
+
+  async function handleExecute(id: string) {
+    const res = await executeApprovedAction(id, 'admin@kriatech.com');
+    if (res.success) {
+      setActionMessage(`ACTION DISPATCHED TO: ${res.destination}. Single-use execution recorded.`);
+      setTimeout(() => setActionMessage(''), 4500);
+      loadApprovals();
+    } else {
+      alert(res.error || 'Execution blocked by security gate.');
     }
   }
 
@@ -244,13 +257,30 @@ export default function ApprovalsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="pt-2 text-xs text-slate-400 border-t border-kria-border/60 flex items-center justify-between">
-                    <span>
-                      Reviewed by: <strong className="text-slate-200">{item.reviewed_by || 'Owner'}</strong> on{' '}
-                      {item.reviewed_at ? new Date(item.reviewed_at).toLocaleString() : 'N/A'}
-                    </span>
-                    {item.review_notes && (
-                      <span className="text-amber-300 italic">&ldquo;{item.review_notes}&rdquo;</span>
+                  <div className="pt-2 text-xs text-slate-400 border-t border-kria-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <span>
+                        Reviewed by: <strong className="text-slate-200">{item.reviewed_by || 'Owner'}</strong> on{' '}
+                        {item.reviewed_at ? new Date(item.reviewed_at).toLocaleString() : 'N/A'}
+                      </span>
+                      {item.review_notes && (
+                        <p className="text-amber-300 italic mt-0.5">&ldquo;{item.review_notes}&rdquo;</p>
+                      )}
+                      {item.executed_at && (
+                        <p className="text-emerald-400 font-medium text-[11px] mt-0.5">
+                          ✓ Executed and dispatched on {new Date(item.executed_at).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+
+                    {item.status === 'approved' && !item.executed_at && (
+                      <button
+                        onClick={() => handleExecute(item.id)}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-electric hover:bg-electric-dark text-white transition-colors shadow-glow flex-shrink-0"
+                      >
+                        <Zap className="h-3.5 w-3.5" />
+                        Dispatch Execution (Single-Use)
+                      </button>
                     )}
                   </div>
                 )}
