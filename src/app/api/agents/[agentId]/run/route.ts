@@ -19,6 +19,7 @@ import { executeContentStudioAgent } from '@/lib/services/content-studio';
 import { executeSEOStrategyAgent } from '@/lib/services/seo-strategy';
 import { executeSalesLeadAgent } from '@/lib/services/sales-lead-agent';
 import { executeCompetitorAgent } from '@/lib/services/competitor-intelligence';
+import { executeWebsiteAuditAgent } from '@/lib/services/website-ux-agent';
 
 export async function POST(
   req: NextRequest,
@@ -242,32 +243,44 @@ export async function POST(
       }
 
       case 'website-agent': {
-        const rawOutput = {
-          target_url: 'https://kriatech.com/products/acrylic-frames',
-          page_title: 'Custom Acrylic Photo Frames | KRIA TECH',
-          detected_issues: [
+        const auditTargetUrl = body.target_url || (typeof input === 'string' && input.startsWith('http') ? input.trim() : undefined) || 'https://kriatech.com/products/acrylic-frames';
+        const auditResult = await executeWebsiteAuditAgent({
+          target_url: auditTargetUrl,
+          product_name: body.product_name,
+          sku: body.sku,
+          topic_or_prompt: body.topic_or_prompt || (typeof input === 'string' && !input.startsWith('http') ? input : undefined),
+          actor_email: session.email,
+          mockHtml: body.mockHtml,
+        });
+
+        if (!auditResult.success) {
+          return NextResponse.json(
             {
-              severity: 'high' as const,
-              issue: 'Missing Product Schema markup for wholesale bulk pricing tiers.',
-              fix: 'Add Schema.org AggregateOffer with priceRange specification.',
+              error: auditResult.error || 'Website UX & SEO audit failed.',
+              execution_mode: 'error',
+              is_simulated: false,
+              model_invoked: false,
             },
-            {
-              severity: 'medium' as const,
-              issue: 'Call-to-Action for B2B wholesale catalog inquiry is below the fold.',
-              fix: 'Add floating "Request Wholesale Quote" sticky button on mobile viewport.',
-            },
-          ],
-          seo_score: 84,
-          mobile_ux_notes:
-            'Page loads swiftly (1.2s on mobile), but high-res acrylic reflection images should use WebP formatting to conserve mobile data.',
-          reasoning_summary:
-            'Technical audit of product landing page focusing on B2B conversion optimization and mobile readability.',
-          sources: ['Web Vitals Benchmarks', 'Search Console Guideline'],
-          verified_facts: ['KRIA TECH existing website is separate from KRIA AI command center.'],
-          assumptions: ['Current website runs on standard responsive layout.'],
-        };
-        validatedOutput = WebsiteAgentOutputSchema.parse(rawOutput);
-        break;
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          agent_id: agentId,
+          task_type: taskType,
+          output: auditResult.output,
+          measured_score: auditResult.measured_score,
+          inspection_checks: auditResult.inspection_checks,
+          execution_mode: 'live_ai',
+          model_invoked: true,
+          is_simulated: false,
+          model_name: auditResult.model_name,
+          saved_audit_id: auditResult.saved_audit_id,
+          approval_id: auditResult.approval_id,
+          conflicts_detected: auditResult.conflicts_detected,
+          message: 'Genuinely audited with live HTML inspection, deterministic technical score calculation, and Google Gemini AI synthesis',
+        });
       }
 
       case 'business-analyst': {

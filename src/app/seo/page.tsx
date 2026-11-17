@@ -105,6 +105,7 @@ export default function SEOStudioPage() {
   const [auditUrl, setAuditUrl] = useState('https://kriatech.com/products/acrylic-frames');
   const [auditing, setAuditing] = useState(false);
   const [auditResult, setAuditResult] = useState<any | null>(null);
+  const [auditMeta, setAuditMeta] = useState<any | null>(null);
   const [proposalSent, setProposalSent] = useState(false);
 
   function handleAddKeyword(e: React.FormEvent) {
@@ -136,6 +137,7 @@ export default function SEOStudioPage() {
 
     setAuditing(true);
     setAuditResult(null);
+    setAuditMeta(null);
     setProposalSent(false);
 
     try {
@@ -148,6 +150,12 @@ export default function SEOStudioPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         setAuditResult(data.output);
+        setAuditMeta({
+          execution_mode: data.execution_mode,
+          model_name: data.model_name,
+          measured_score: data.measured_score,
+          inspection_checks: data.inspection_checks,
+        });
       } else {
         alert(data.error || 'Failed to complete website audit.');
       }
@@ -403,17 +411,70 @@ export default function SEOStudioPage() {
 
           {/* Audit Results */}
           {auditResult && (
-            <div className="p-4 rounded-xl bg-kria-surface border border-kria-border text-xs space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-kria-border">
+            <div className="p-4 rounded-xl bg-kria-surface border border-kria-border text-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-kria-border gap-2">
                 <div>
-                  <span className="font-bold text-white text-sm block">{auditResult.page_title}</span>
-                  <span className="text-[11px] text-slate-400">{auditResult.target_url}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-sm">{auditResult.page_title}</span>
+                    {auditMeta?.execution_mode === 'live_ai' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                        ⚡ Real AI ({auditMeta.model_name || 'Gemini'})
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-slate-400 block mt-0.5">{auditResult.target_url}</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block">SEO & UX Score</span>
-                  <span className="text-lg font-bold text-emerald-400">{auditResult.seo_score}/100</span>
+                <div className="text-right flex-shrink-0">
+                  <span className="text-[10px] text-slate-400 block uppercase font-semibold">Measured SEO Score</span>
+                  <div className="flex items-baseline justify-end gap-1">
+                    <span className="text-xl font-extrabold text-emerald-400">{auditResult.seo_score}</span>
+                    <span className="text-[11px] text-slate-400">/ 100</span>
+                  </div>
                 </div>
               </div>
+
+              {/* Measurable HTML Technical Checks Breakdown */}
+              {auditMeta?.inspection_checks && auditMeta.inspection_checks.length > 0 && (
+                <div className="space-y-2">
+                  <span className="font-bold text-slate-300 block text-[11px] uppercase tracking-wider">
+                    Measurable Technical HTML Checks ({auditMeta.inspection_checks.length} verified):
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {auditMeta.inspection_checks.map((chk: any) => (
+                      <div
+                        key={chk.id}
+                        className="p-2 rounded-lg bg-kria-850 border border-kria-border/50 text-[11px] flex flex-col justify-between"
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="font-semibold text-white truncate">{chk.title}</span>
+                          <span
+                            className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${
+                              chk.status === 'pass'
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : chk.status === 'warning'
+                                ? 'bg-amber-500/20 text-amber-300'
+                                : 'bg-rose-500/20 text-rose-300'
+                            }`}
+                          >
+                            {chk.status} ({chk.pointsAwarded}/{chk.maxPoints} pts)
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 truncate" title={chk.evidence}>
+                          {chk.evidence}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Mobile UX & Conversion Optimization Directives */}
+              {auditResult.mobile_ux_notes && (
+                <div className="p-3 rounded-lg bg-kria-850 border border-electric/30 text-xs">
+                  <span className="font-bold text-electric-light block mb-1">Mobile UX & Conversion Guidance:</span>
+                  <p className="text-slate-300 leading-relaxed text-[11px]">{auditResult.mobile_ux_notes}</p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <span className="font-bold text-slate-300 block">Identified Opportunities & Recommendations:</span>
@@ -421,7 +482,9 @@ export default function SEOStudioPage() {
                   <div key={i} className="p-2.5 rounded-lg bg-kria-850 border border-kria-border/60 flex items-start justify-between gap-3">
                     <div>
                       <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded uppercase mr-2 ${
-                        iss.severity === 'high' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'
+                        iss.severity === 'critical' || iss.severity === 'high'
+                          ? 'bg-rose-500/20 text-rose-300'
+                          : 'bg-amber-500/20 text-amber-300'
                       }`}>
                         {iss.severity}
                       </span>

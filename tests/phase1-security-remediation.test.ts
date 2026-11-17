@@ -78,13 +78,13 @@ describe('Phase 1 — Security and Execution Transparency Remediation', () => {
         isDemo: false,
       };
 
-      const req = new NextRequest('http://localhost:3000/api/agents/website-agent/run', {
+      const req = new NextRequest('http://localhost:3000/api/agents/business-analyst/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: 'https://kriatech.com/products/acrylic-frames' }),
+        body: JSON.stringify({ input: 'Analyze quarterly operations' }),
       });
 
-      const res = await runAgent(req, { params: { agentId: 'website-agent' } });
+      const res = await runAgent(req, { params: { agentId: 'business-analyst' } });
       expect(res.status).toBe(200);
 
       const json = await res.json();
@@ -111,13 +111,13 @@ describe('Phase 1 — Security and Execution Transparency Remediation', () => {
         isDemo: false,
       };
 
-      const req = new NextRequest('http://localhost:3000/api/agents/website-agent/run', {
+      const req = new NextRequest('http://localhost:3000/api/agents/business-analyst/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: 'https://kriatech.com/products/acrylic-frames' }),
+        body: JSON.stringify({ input: 'Analyze quarterly operations' }),
       });
 
-      const res = await runAgent(req, { params: { agentId: 'website-agent' } });
+      const res = await runAgent(req, { params: { agentId: 'business-analyst' } });
       expect(res.status).toBe(200);
 
       const json = await res.json();

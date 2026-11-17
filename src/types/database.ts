@@ -145,6 +145,16 @@ export interface SEOKeyword {
   updated_at: string;
 }
 
+export interface SEOAudit {
+  id: string;
+  target_url: string;
+  audit_type: string;
+  issues: any[];
+  recommendations: any[];
+  score: number | null;
+  created_at: string;
+}
+
 export interface CompetitorReport {
   id: string;
   competitor_name: string;
