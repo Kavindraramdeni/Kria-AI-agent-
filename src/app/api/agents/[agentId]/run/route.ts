@@ -16,6 +16,7 @@ import { calculateWholesaleQuote } from '@/lib/services/pricing-engine';
 import { KRIA_CATALOG_VARIANTS, KRIA_TECH_MANUFACTURING_SPECS } from '@/lib/data/kria-catalog-matrix';
 import { getServerSession } from '@/lib/auth/session';
 import { executeContentStudioAgent } from '@/lib/services/content-studio';
+import { executeSEOStrategyAgent } from '@/lib/services/seo-strategy';
 
 export async function POST(
   req: NextRequest,
@@ -70,52 +71,43 @@ export async function POST(
     // Execute agent logic grounded in KRIA TECH manufacturing parameters
     switch (agentId) {
       case 'seo-agent': {
-        const rawOutput = {
-          target_cluster: 'Magnetic Acrylic Photo Frames',
-          recommended_keywords: [
+        // Phase 2B: Genuinely AI-Powered Generation via Google Gemini
+        const seoResult = await executeSEOStrategyAgent({
+          target_cluster: body.target_cluster,
+          product_name: body.product_name,
+          sku: body.sku,
+          target_market: body.target_market,
+          target_audience: body.target_audience,
+          topic_or_prompt: typeof input === 'string' ? input : body.topic_or_prompt,
+          actor_email: session.email,
+        });
+
+        if (!seoResult.success) {
+          return NextResponse.json(
             {
-              keyword: 'magnetic acrylic photo frame manufacturer india',
-              volume_estimate: 1200,
-              intent: 'commercial' as const,
-              target_page: '/products/magnetic-acrylic-frames',
-              priority: 'high' as const,
+              error: seoResult.error || 'SEO Strategy AI generation failed.',
+              execution_mode: 'error',
+              is_simulated: false,
+              model_invoked: false,
             },
-            {
-              keyword: 'clear acrylic floating frame factory wholesale',
-              volume_estimate: 850,
-              intent: 'transactional' as const,
-              target_page: '/products/acrylic-frames-bulk',
-              priority: 'high' as const,
-            },
-            {
-              keyword: 'double panel acrylic desk block 5x7',
-              volume_estimate: 420,
-              intent: 'commercial' as const,
-              target_page: '/products/5x7-acrylic-block',
-              priority: 'medium' as const,
-            },
-          ],
-          on_page_recommendations: [
-            'Ensure H1 specifies "Direct Manufacturer & Laser Cutting Facility".',
-            'Add FAQ Schema answering: "What magnet grade is used in KRIA acrylic frames?" (Answer: N52 Nickel Plated).',
-            'Include high-resolution zoom photo of diamond-beveled polished edge to prove zero yellowing / haze.',
-          ],
-          content_gap_analysis:
-            'Competitors are bidding on generic "acrylic frame" terms but missing bulk commercial intent keywords like "wholesale acrylic photo frame manufacturer for gift shops".',
-          reasoning_summary:
-            'Grounded search query analysis using verified KRIA TECH factory specifications and commercial keyword intent classification.',
-          sources: ['KRIA TECH Product Master Catalog', 'Commercial Search Query Intent Index'],
-          verified_facts: [
-            KRIA_MANUFACTURING_FACTS.materials.acrylic,
-            KRIA_MANUFACTURING_FACTS.materials.magnets,
-            `Turnaround standard: ${KRIA_MANUFACTURING_FACTS.production_constraints.turnaround_standard}`,
-          ],
-          assumptions: [
-            'Target audience includes wedding studio owners, corporate gifters, and boutique retailers.',
-          ],
-        };
-        validatedOutput = SEOAgentOutputSchema.parse(rawOutput);
-        break;
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          agent_id: agentId,
+          task_type: taskType,
+          output: seoResult.output,
+          execution_mode: 'live_ai',
+          model_invoked: true,
+          is_simulated: false,
+          model_name: seoResult.model_name,
+          saved_keyword_ids: seoResult.saved_keyword_ids,
+          approval_id: seoResult.approval_id,
+          conflicts_detected: seoResult.conflicts_detected,
+          message: 'Genuinely generated with Google Gemini AI grounded in verified KRIA TECH manufacturing parameters',
+        });
       }
 
       case 'content-agent': {

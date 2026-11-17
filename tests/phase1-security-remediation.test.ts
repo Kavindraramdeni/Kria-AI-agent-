@@ -78,13 +78,13 @@ describe('Phase 1 — Security and Execution Transparency Remediation', () => {
         isDemo: false,
       };
 
-      const req = new NextRequest('http://localhost:3000/api/agents/seo-agent/run', {
+      const req = new NextRequest('http://localhost:3000/api/agents/sales-agent/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: 'Target magnetic frame keywords' }),
+        body: JSON.stringify({ input: 'Score lead for 500 pcs wholesale inquiry' }),
       });
 
-      const res = await runAgent(req, { params: { agentId: 'seo-agent' } });
+      const res = await runAgent(req, { params: { agentId: 'sales-agent' } });
       expect(res.status).toBe(200);
 
       const json = await res.json();
@@ -111,13 +111,13 @@ describe('Phase 1 — Security and Execution Transparency Remediation', () => {
         isDemo: false,
       };
 
-      const req = new NextRequest('http://localhost:3000/api/agents/seo-agent/run', {
+      const req = new NextRequest('http://localhost:3000/api/agents/sales-agent/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: 'Audit SEO for acrylic magnets' }),
+        body: JSON.stringify({ input: 'Score lead for 500 pcs wholesale inquiry' }),
       });
 
-      const res = await runAgent(req, { params: { agentId: 'seo-agent' } });
+      const res = await runAgent(req, { params: { agentId: 'sales-agent' } });
       expect(res.status).toBe(200);
 
       const json = await res.json();
