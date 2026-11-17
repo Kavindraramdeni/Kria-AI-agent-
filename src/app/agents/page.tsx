@@ -34,12 +34,18 @@ export default function AgentsPage() {
   const [testInput, setTestInput] = useState('Clear Magnetic Acrylic Photo Frame (5x7 inch)');
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<any | null>(null);
+  const [executionMeta, setExecutionMeta] = useState<{
+    execution_mode: string;
+    is_simulated: boolean;
+    model_invoked: boolean;
+    model_name?: string;
+  } | null>(null);
   const [approvalSent, setApprovalSent] = useState(false);
-
 
   async function handleRunAgent() {
     setRunning(true);
     setResult(null);
+    setExecutionMeta(null);
     setApprovalSent(false);
 
     try {
@@ -52,6 +58,12 @@ export default function AgentsPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         setResult(data.output);
+        setExecutionMeta({
+          execution_mode: data.execution_mode,
+          is_simulated: data.is_simulated,
+          model_invoked: data.model_invoked,
+          model_name: data.model_name,
+        });
       } else {
         alert(data.error || 'Failed to execute agent task.');
       }
@@ -218,9 +230,29 @@ export default function AgentsPage() {
             <div className="mt-4 p-4 rounded-xl bg-kria-surface border border-kria-border space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-200">Structured Output & Verified Analysis</span>
-                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">
-                  Schema Validated
-                </span>
+                <div className="flex items-center gap-2">
+                  {executionMeta && (
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                        executionMeta.execution_mode === 'live_ai'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                      }`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          executionMeta.execution_mode === 'live_ai' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                        }`}
+                      />
+                      {executionMeta.execution_mode === 'live_ai'
+                        ? `⚡ Real AI (${executionMeta.model_name || 'Gemini'})`
+                        : 'Simulated / Hardcoded Template'}
+                    </span>
+                  )}
+                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                    Schema Validated
+                  </span>
+                </div>
               </div>
 
               {/* Reasoning Summary */}

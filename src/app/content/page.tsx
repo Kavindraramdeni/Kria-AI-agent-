@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Header } from '@/components/layout/header';
 import { DemoBadge } from '@/components/ui/demo-badge';
 import { createApprovalRequest } from '@/lib/services/approvals';
+import { getContentItems } from '@/lib/services/content-items';
 import { isDemoModeActive } from '@/lib/demo-mode';
 import { ContentItem } from '@/types/database';
 import { Copy, Check, Sparkles, PenTool } from 'lucide-react';
@@ -41,11 +42,17 @@ export default function ContentStudioPage() {
   const [approvalSentId, setApprovalSentId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isDemoModeActive()) {
-      setContentList(OPTIONAL_DEMO_CONTENT);
-    } else {
-      setContentList([]);
+    async function loadContent() {
+      const res = await getContentItems();
+      if (res.data && res.data.length > 0) {
+        setContentList(res.data);
+      } else if (isDemoModeActive()) {
+        setContentList(OPTIONAL_DEMO_CONTENT);
+      } else {
+        setContentList([]);
+      }
     }
+    loadContent();
   }, []);
 
   function handleCopy(text: string, id: string) {

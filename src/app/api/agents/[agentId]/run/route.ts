@@ -15,6 +15,7 @@ import { logActivity } from '@/lib/services/activity-logs';
 import { calculateWholesaleQuote } from '@/lib/services/pricing-engine';
 import { KRIA_CATALOG_VARIANTS, KRIA_TECH_MANUFACTURING_SPECS } from '@/lib/data/kria-catalog-matrix';
 import { getServerSession } from '@/lib/auth/session';
+import { executeContentStudioAgent } from '@/lib/services/content-studio';
 
 export async function POST(
   req: NextRequest,
@@ -118,31 +119,46 @@ export async function POST(
       }
 
       case 'content-agent': {
-        const isPhotoFrame = typeof input === 'string' && input.toLowerCase().includes('frame');
-        const rawOutput = {
-          title: isPhotoFrame
-            ? 'The Art of Optical Clarity: Why KRIA TECH 20mm Magnetic Frames Elevate Modern Interiors'
-            : `KRIA TECH Precision Fabrication: ${typeof input === 'string' ? input : 'Custom Acrylic & Signage'}`,
-          content_type: 'product_description' as const,
-          body: `Engineered from dual panels of imported virgin cast acrylic with 92% light transmission, the KRIA TECH magnetic acrylic frame provides unmatched optical depth. Four precision-embedded N52 nickel-plated neodymium corner magnets hold photos firmly while allowing effortless swaps in seconds. Hand-buffed on a 30-ton diamond wheel to ensure flawless clarity without distortion. Ideal for executive desks, wedding keepsakes, and luxury retail displays.`,
-          target_audience: 'Interior designers, retail gift shop owners, wedding photographers',
-          suggested_cta: 'Request wholesale sample box or inquire for custom laser engraving',
-          keywords_used: ['magnetic acrylic photo frame', 'custom laser cut acrylic', 'optical grade acrylic block'],
-          recommended_visuals:
-            'Close-up macro photo of diamond polished edge showing reflection, side-angle 20mm thickness profile with magnet alignment.',
-          reasoning_summary:
-            'Crafted high-converting product copy highlighting KRIA TECH tangible manufacturing advantages (thickness, diamond polishing, N52 magnets).',
-          sources: ['KRIA TECH Shop Floor Specifications'],
-          verified_facts: [
-            KRIA_MANUFACTURING_FACTS.materials.acrylic,
-            `4x6 frame thickness is 20mm (10+10mm); 5x7 frame is 24mm (12+12mm).`,
-          ],
-          assumptions: [
-            'Buyer values premium optical finish over cheap extruded plastic.',
-          ],
-        };
-        validatedOutput = ContentAgentOutputSchema.parse(rawOutput);
-        break;
+        // Phase 2A: Genuinely AI-Powered Generation via Google Gemini
+        const generationResult = await executeContentStudioAgent({
+          product_name: body.product_name,
+          sku: body.sku,
+          dimensions: body.dimensions,
+          verified_specs: body.verified_specs,
+          target_audience: body.target_audience,
+          content_type: body.content_type,
+          tone: body.tone,
+          language: body.language,
+          topic_or_prompt: typeof input === 'string' ? input : body.topic_or_prompt,
+          actor_email: session.email,
+        });
+
+        if (!generationResult.success) {
+          return NextResponse.json(
+            {
+              error: generationResult.error || 'Content Studio AI generation failed.',
+              execution_mode: 'error',
+              is_simulated: false,
+              model_invoked: false,
+            },
+            { status: 500 }
+          );
+        }
+
+        // Return honest execution metadata for genuine AI invocation
+        return NextResponse.json({
+          success: true,
+          agent_id: agentId,
+          task_type: taskType,
+          output: generationResult.output,
+          execution_mode: 'live_ai',
+          model_invoked: true,
+          is_simulated: false,
+          model_name: generationResult.model_name,
+          saved_content_id: generationResult.saved_content_id,
+          approval_id: generationResult.approval_id,
+          message: 'Genuinely generated with Google Gemini AI grounded in verified KRIA TECH manufacturing parameters',
+        });
       }
 
       case 'sales-agent': {

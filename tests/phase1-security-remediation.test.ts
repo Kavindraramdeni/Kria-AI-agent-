@@ -111,13 +111,13 @@ describe('Phase 1 — Security and Execution Transparency Remediation', () => {
         isDemo: false,
       };
 
-      const req = new NextRequest('http://localhost:3000/api/agents/content-agent/run', {
+      const req = new NextRequest('http://localhost:3000/api/agents/seo-agent/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: 'Write Instagram caption for 4x6 frame' }),
+        body: JSON.stringify({ input: 'Audit SEO for acrylic magnets' }),
       });
 
-      const res = await runAgent(req, { params: { agentId: 'content-agent' } });
+      const res = await runAgent(req, { params: { agentId: 'seo-agent' } });
       expect(res.status).toBe(200);
 
       const json = await res.json();
