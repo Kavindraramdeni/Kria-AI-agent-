@@ -18,6 +18,7 @@ import { getServerSession } from '@/lib/auth/session';
 import { executeContentStudioAgent } from '@/lib/services/content-studio';
 import { executeSEOStrategyAgent } from '@/lib/services/seo-strategy';
 import { executeSalesLeadAgent } from '@/lib/services/sales-lead-agent';
+import { executeCompetitorAgent } from '@/lib/services/competitor-intelligence';
 
 export async function POST(
   req: NextRequest,
@@ -202,35 +203,42 @@ export async function POST(
       }
 
       case 'competitor-agent': {
-        const rawOutput = {
-          competitor_name: 'Mass Market Acrylic Suppliers (Aggregators)',
-          products_analyzed: [
+        const competitorResult = await executeCompetitorAgent({
+          competitor_name: body.competitor_name || (typeof input === 'string' && input.trim() ? input.trim() : undefined),
+          target_category: body.target_category || body.category,
+          sku: body.sku,
+          product_name: body.product_name,
+          website_url: body.website_url,
+          topic_or_prompt: body.topic_or_prompt || (typeof input === 'string' ? input : undefined),
+          actor_email: session.email,
+        });
+
+        if (!competitorResult.success) {
+          return NextResponse.json(
             {
-              product_name: 'Standard 4x6 Acrylic Frame',
-              estimated_price: '₹599 - ₹699',
-              thickness_spec: '12mm to 15mm extruded acrylic',
+              error: competitorResult.error || 'Competitor Intelligence AI analysis failed.',
+              execution_mode: 'error',
+              is_simulated: false,
+              model_invoked: false,
             },
-          ],
-          pricing_gap_vs_kria:
-            'Competitors sell thinner 15mm extruded acrylic at ₹699. KRIA TECH direct factory price is ₹549 for 20mm premium cast acrylic, giving KRIA a 21% price advantage and superior thickness.',
-          kria_competitive_advantages: [
-            'Cast acrylic does not yellow or craze under UV exposure.',
-            'Thicker 20mm cross section (10+10mm) provides self-standing stability without wobbling.',
-            'Direct factory CO2 laser cutting eliminates middleman markup.',
-          ],
-          opportunities: [
-            'Target interior stylists searching for "heavyweight executive acrylic block" who are dissatisfied with thin imported frames.',
-          ],
-          reasoning_summary:
-            'Ethical public benchmarking comparing physical specifications (thickness, polymer grade) against market aggregators.',
-          sources: ['Public Marketplace Listings', 'KRIA Material Testing Specs'],
-          verified_facts: [
-            'KRIA TECH uses 20mm total thickness for 4x6 and 24mm for 5x7.',
-          ],
-          assumptions: ['Aggregators rely on extruded acrylic imported in bulk.'],
-        };
-        validatedOutput = CompetitorAgentOutputSchema.parse(rawOutput);
-        break;
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          agent_id: agentId,
+          task_type: taskType,
+          output: competitorResult.output,
+          execution_mode: 'live_ai',
+          model_invoked: true,
+          is_simulated: false,
+          model_name: competitorResult.model_name,
+          saved_report_id: competitorResult.saved_report_id,
+          approval_id: competitorResult.approval_id,
+          conflicts_detected: competitorResult.conflicts_detected,
+          message: 'Genuinely generated with Google Gemini AI grounded in verified KRIA TECH manufacturing parameters and market benchmark standards',
+        });
       }
 
       case 'website-agent': {

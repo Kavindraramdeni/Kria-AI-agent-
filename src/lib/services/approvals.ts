@@ -27,7 +27,10 @@ export async function getApprovals(): Promise<{ data: ApprovalRequest[]; isLive:
   }
 }
 
-export async function createApprovalRequest(request: Partial<ApprovalRequest>): Promise<{ success: boolean; data?: ApprovalRequest; error?: string }> {
+export async function createApprovalRequest(
+  request: Partial<ApprovalRequest>,
+  customClient?: any
+): Promise<{ success: boolean; data?: ApprovalRequest; error?: string }> {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
@@ -52,7 +55,7 @@ export async function createApprovalRequest(request: Partial<ApprovalRequest>): 
       return { success: true, data: newApproval };
     }
 
-    const supabase = createClient();
+    const supabase = customClient || createClient();
     const { data, error } = await supabase
       .from('approval_requests')
       .insert([{
