@@ -69,7 +69,9 @@ export async function logActivity(entry: {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
       const supabase = createClient();
-      await supabase.from('activity_logs').insert([newLog]);
+      const { id, ...supabaseLog } = newLog;
+      const { error } = await supabase.from('activity_logs').insert([supabaseLog]);
+      if (error) console.error('Supabase activity log error:', error.message);
     }
 
     return newLog;
