@@ -81,7 +81,7 @@ describe('Phase 1 — Security and Execution Transparency Remediation', () => {
       const req = new NextRequest('http://localhost:3000/api/agents/business-analyst/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: 'Analyze quarterly operations' }),
+        body: JSON.stringify({ input: 'Analyze quarterly operations', simulate: true }),
       });
 
       const res = await runAgent(req, { params: { agentId: 'business-analyst' } });
@@ -114,7 +114,7 @@ describe('Phase 1 — Security and Execution Transparency Remediation', () => {
       const req = new NextRequest('http://localhost:3000/api/agents/business-analyst/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: 'Analyze quarterly operations' }),
+        body: JSON.stringify({ input: 'Analyze quarterly operations', simulate: true }),
       });
 
       const res = await runAgent(req, { params: { agentId: 'business-analyst' } });

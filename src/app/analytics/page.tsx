@@ -5,13 +5,26 @@ import { Header } from '@/components/layout/header';
 import { getLeads } from '@/lib/services/leads';
 import { getProducts } from '@/lib/services/products';
 import { Lead, Product } from '@/types/database';
-import { TrendingUp, Users, Package, Sparkles, AlertCircle, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import {
+  TrendingUp,
+  Users,
+  Package,
+  Sparkles,
+  AlertCircle,
+  ArrowUpRight,
+  CheckCircle2,
+  Cpu,
+  DollarSign,
+  Layers,
+  Clock,
+} from 'lucide-react';
 
 export default function AnalyticsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLiveDatabase, setIsLiveDatabase] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
+  const [analysisMeta, setAnalysisMeta] = useState<any | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
@@ -35,6 +48,12 @@ export default function AnalyticsPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         setAnalysisResult(data.output);
+        setAnalysisMeta({
+          unit_economics: data.unit_economics,
+          pipeline_summary: data.pipeline_summary,
+          execution_mode: data.execution_mode,
+          model_name: data.model_name,
+        });
       } else {
         alert(data.error || 'Failed to synthesize business analytics.');
       }
@@ -112,15 +131,22 @@ export default function AnalyticsPage() {
         {/* Analyst Briefing Box */}
         {analysisResult && (
           <div className="p-5 rounded-xl bg-kria-card border border-electric/40 shadow-card space-y-4">
-            <div className="flex items-center justify-between border-b border-kria-border/70 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-kria-border/70 pb-3 gap-2">
               <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                 Executive Synthesis Briefing
               </span>
-              <span className="text-[11px] text-slate-400">Source: Real CRM & Product Database</span>
+              <div className="flex items-center gap-2">
+                {analysisMeta?.execution_mode === 'live_ai' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                    <Cpu className="h-3 w-3" /> Live AI ({analysisMeta.model_name || 'Gemini 3.5 Flash Lite'})
+                  </span>
+                )}
+                <span className="text-[11px] text-slate-400">Source: Real CRM & Unit Economics Registry</span>
+              </div>
             </div>
 
-            <p className="text-xs text-slate-200 leading-relaxed bg-kria-surface p-3 rounded-lg border border-kria-border/60">
+            <p className="text-xs text-slate-200 leading-relaxed bg-kria-surface p-3.5 rounded-lg border border-kria-border/60">
               {analysisResult.executive_summary}
             </p>
 
@@ -161,6 +187,83 @@ export default function AnalyticsPage() {
                 </ul>
               </div>
             </div>
+
+            {/* Grounded Unit Economics & Margin Modeling Matrix */}
+            {analysisMeta?.unit_economics && (
+              <div className="pt-2 border-t border-kria-border/70 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <DollarSign className="h-4 w-4 text-emerald-400" />
+                    Factory Unit Economics & Wholesale Margin Modeling
+                  </h4>
+                  <div className="flex items-center gap-3 text-[11px]">
+                    <span className="text-slate-400">
+                      Avg 500-Tier Margin: <strong className="text-emerald-400">{analysisMeta.unit_economics.average_gross_margin_pct}%</strong>
+                    </span>
+                    <span className="text-slate-400">
+                      Top Margin SKU: <strong className="text-electric-light">{analysisMeta.unit_economics.top_margin_sku}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-lg border border-kria-border/60">
+                  <table className="w-full text-left text-[11px]">
+                    <thead className="bg-kria-850 text-slate-400 uppercase font-semibold text-[10px]">
+                      <tr>
+                        <th className="px-3 py-2">Product SKU</th>
+                        <th className="px-3 py-2">Catalog Name</th>
+                        <th className="px-3 py-2">Retail Price</th>
+                        <th className="px-3 py-2">Wholesale 500 Tier</th>
+                        <th className="px-3 py-2">Factory COGS</th>
+                        <th className="px-3 py-2">500-Tier Margin</th>
+                        <th className="px-3 py-2">Sheet Yield</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-kria-border/50 text-slate-300">
+                      {analysisMeta.unit_economics.products?.map((p: any) => (
+                        <tr key={p.sku} className="hover:bg-kria-surface/70">
+                          <td className="px-3 py-2 font-mono text-white">{p.sku}</td>
+                          <td className="px-3 py-2">{p.product_name}</td>
+                          <td className="px-3 py-2">₹{p.retail_price_inr}</td>
+                          <td className="px-3 py-2 font-semibold text-white">₹{p.wholesale_500_inr}</td>
+                          <td className="px-3 py-2 font-mono text-slate-400">₹{p.estimated_cogs_inr}</td>
+                          <td className="px-3 py-2 font-bold text-emerald-400">{p.wholesale_500_margin_pct}%</td>
+                          <td className="px-3 py-2 font-mono text-slate-400">{p.units_per_master_sheet} pcs / sheet</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Inventory Velocity Highlights */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px] pt-1">
+                  <div className="p-2.5 rounded-lg bg-kria-850 border border-kria-border/60">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Daily Shift Capacity</span>
+                    <span className="text-white font-bold text-sm mt-0.5 block">
+                      {analysisMeta.unit_economics.inventory_velocity.daily_factory_capacity_units} units
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-kria-850 border border-kria-border/60">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Wholesale SLA</span>
+                    <span className="text-white font-bold text-sm mt-0.5 block">
+                      {analysisMeta.unit_economics.inventory_velocity.standard_dispatch_sla_days} days (VIP: 1 day)
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-kria-850 border border-kria-border/60">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Sheet Safety Stock</span>
+                    <span className="text-white font-bold text-sm mt-0.5 block">
+                      {analysisMeta.unit_economics.inventory_velocity.acrylic_sheet_safety_stock} sheets (~1,440 frames)
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-kria-850 border border-kria-border/60">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">VIP Break-Even</span>
+                    <span className="text-emerald-400 font-bold text-sm mt-0.5 block">
+                      {analysisMeta.unit_economics.break_even_vip_units} units (-₹2/pc)
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

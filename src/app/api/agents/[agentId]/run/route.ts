@@ -20,6 +20,7 @@ import { executeSEOStrategyAgent } from '@/lib/services/seo-strategy';
 import { executeSalesLeadAgent } from '@/lib/services/sales-lead-agent';
 import { executeCompetitorAgent } from '@/lib/services/competitor-intelligence';
 import { executeWebsiteAuditAgent } from '@/lib/services/website-ux-agent';
+import { executeBusinessAnalystAgent } from '@/lib/services/business-analyst';
 
 export async function POST(
   req: NextRequest,
@@ -284,33 +285,69 @@ export async function POST(
       }
 
       case 'business-analyst': {
-        const rawOutput = {
-          executive_summary:
-            'Strong wholesale demand for magnetic acrylic photo frames across corporate gifting and wedding studios. CRM lead qualification rate is healthy at 42%.',
-          pipeline_health: 'Healthy pipeline with high concentration in Qualified and Negotiation stages.',
-          top_demanded_products: [
-            'Clear Magnetic Acrylic Photo Frame (5x7 inch)',
-            'Large Magnetic Acrylic Photo Block (8x10 inch)',
-            'Custom Sublimation Acrylic Keychains (Bulk)',
-          ],
-          identified_bottlenecks: [
-            '48-hour follow-up delay between Quotation Sent and Negotiation stages.',
-            'Need faster physical sample dispatch tracking for wholesale leads.',
-          ],
-          recommended_growth_actions: [
-            'Automate 24-hour WhatsApp follow-up reminders in CRM.',
-            'Focus Q4 ad campaign specifically on wedding photography studio hampers.',
-          ],
-          reasoning_summary:
-            'Synthesized lead conversion rates, product catalog volume, and current pipeline distribution into high-leverage growth priorities.',
-          sources: ['KRIA AI CRM Database', 'Product Demand Log'],
-          verified_facts: [
-            'Magnetic acrylic photo frames constitute 60%+ of high-value inquiries.',
-          ],
-          assumptions: ['Lead volumes will increase by 25% during wedding season.'],
-        };
-        validatedOutput = BusinessAnalystOutputSchema.parse(rawOutput);
-        break;
+        if (body.simulate === true || body.task_type === 'simulation') {
+          const rawOutput = {
+            executive_summary:
+              'Strong wholesale demand for magnetic acrylic photo frames across corporate gifting and wedding studios. CRM lead qualification rate is healthy at 42%.',
+            pipeline_health: 'Healthy pipeline with high concentration in Qualified and Negotiation stages.',
+            top_demanded_products: [
+              'Clear Magnetic Acrylic Photo Frame (5x7 inch)',
+              'Large Magnetic Acrylic Photo Block (8x10 inch)',
+              'Custom Sublimation Acrylic Keychains (Bulk)',
+            ],
+            identified_bottlenecks: [
+              '48-hour follow-up delay between Quotation Sent and Negotiation stages.',
+              'Need faster physical sample dispatch tracking for wholesale leads.',
+            ],
+            recommended_growth_actions: [
+              'Automate 24-hour WhatsApp follow-up reminders in CRM.',
+              'Focus Q4 ad campaign specifically on wedding photography studio hampers.',
+            ],
+            reasoning_summary:
+              'Synthesized lead conversion rates, product catalog volume, and current pipeline distribution into high-leverage growth priorities.',
+            sources: ['KRIA AI CRM Database', 'Product Demand Log'],
+            verified_facts: [
+              'Magnetic acrylic photo frames constitute 60%+ of high-value inquiries.',
+            ],
+            assumptions: ['Lead volumes will increase by 25% during wedding season.'],
+          };
+          validatedOutput = BusinessAnalystOutputSchema.parse(rawOutput);
+          break;
+        }
+
+        const analystResult = await executeBusinessAnalystAgent({
+          focus_area: body.focus_area,
+          target_sku: body.sku || body.target_sku,
+          topic_or_prompt: body.topic_or_prompt || (typeof input === 'string' && input !== 'synthesize_quarterly_metrics' ? input : undefined),
+          actor_email: session.email,
+        });
+
+        if (!analystResult.success) {
+          return NextResponse.json(
+            {
+              error: analystResult.error || 'Operations & Growth AI analysis failed.',
+              execution_mode: 'error',
+              is_simulated: false,
+              model_invoked: false,
+            },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          agent_id: agentId,
+          task_type: taskType,
+          output: analystResult.output,
+          unit_economics: analystResult.unit_economics,
+          pipeline_summary: analystResult.pipeline_summary,
+          execution_mode: 'live_ai',
+          model_invoked: true,
+          is_simulated: false,
+          model_name: analystResult.model_name,
+          approval_id: analystResult.approval_id,
+          message: 'Genuinely synthesized with live CRM database metrics, factory unit economics, and Google Gemini AI',
+        });
       }
     }
 

@@ -102,4 +102,24 @@ export const BusinessAnalystOutputSchema = BaseAgentOutputSchema.extend({
   top_demanded_products: z.array(z.string()),
   identified_bottlenecks: z.array(z.string()),
   recommended_growth_actions: z.array(z.string()),
+  unit_economics: z
+    .object({
+      average_gross_margin_pct: z.number().optional(),
+      top_margin_sku: z.string().optional(),
+      break_even_units_per_batch: z.number().optional(),
+      inventory_turnover_days: z.number().optional(),
+    })
+    .optional(),
+  margin_modeling: z
+    .array(
+      z.object({
+        sku: z.string(),
+        product_name: z.string(),
+        retail_price_inr: z.number(),
+        wholesale_500_price_inr: z.number(),
+        estimated_cogs_inr: z.number(),
+        gross_margin_pct: z.number(),
+      })
+    )
+    .optional(),
 });
