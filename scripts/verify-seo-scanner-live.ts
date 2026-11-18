@@ -2,35 +2,44 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 dotenv.config();
 
-import { createClient } from '../src/lib/supabase/client';
+import { createClient } from '@supabase/supabase-js';
 import { performComprehensiveSeoScan } from '../src/lib/services/seo-scanner';
 
 async function main() {
   console.log('================================================================');
-  console.log('KRIA AI Phase 3.1 — Live Network SEO & Core Web Vitals Verification');
+  console.log('KRIA AI Phase 3.2 — Live Network, DNS Pinning & Authenticated Persistence');
   console.log('================================================================\n');
 
-  // 1. Supabase Client Setup & Authentication Attempt
-  const supabase = createClient();
+  // 1. Supabase Client Setup & Owner Authentication
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  const supabase = createClient(supabaseUrl, supabaseAnonKey);
   let authenticatedUserEmail: string | null = null;
+  let authUserId: string | null = null;
 
   try {
-    const { data: authData } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
       email: 'admin@kriatech.com',
       password: 'kria-demo-pass-2026',
     });
-    if (authData?.user) {
+    if (authErr) {
+      console.error('Supabase Auth Failed:', authErr.message);
+    } else if (authData?.user) {
       authenticatedUserEmail = authData.user.email || null;
-      console.log('✓ Supabase Auth Session Established:', authenticatedUserEmail);
+      authUserId = authData.user.id;
+      console.log('✓ Supabase Auth Session Established:');
+      console.log('  - Email:  ', authenticatedUserEmail);
+      console.log('  - User ID:', authUserId);
+      console.log('  - Role:   ', authData.user.role);
     }
-  } catch {
-    console.log('ℹ Supabase Auth Session: Operating with anonymous client');
+  } catch (err: any) {
+    console.error('Supabase Auth Exception:', err.message);
   }
 
-  // 2. Perform Real Live Network Fetch (ZERO mockHtml / ZERO mockHeaders)
+  // 2. Perform Real Live Network Fetch with DNS Pinning (ZERO mockHtml / ZERO mockHeaders)
   const targetLiveUrl = 'https://example.com';
   console.log(`\n--- Step 1: Performing Live Network Fetch to '${targetLiveUrl}' ---`);
-  console.log('Validating against SSRF blocklist, local metadata, and resolving DNS...');
+  console.log('Resolving DNS, pinning IP, validating SSRF blocks, and enforcing streaming bounds...');
 
   const startTime = Date.now();
   const scan = await performComprehensiveSeoScan({
@@ -47,7 +56,7 @@ async function main() {
   console.log('  - Final Resolved URL:         ', scan.network.finalUrl);
   console.log('  - HTTP Status:                ', `${scan.network.statusCode} ${scan.network.statusText}`);
   console.log('  - Execution Mode:             ', scan.executionMode, '(STRICTLY LIVE NETWORK)');
-  console.log('  - Measured Server TTFB:       ', `${scan.network.ttfbMs} ms (${scan.coreWebVitals.ttfbRating})`);
+  console.log('  - Req -> Resp Start Latency:  ', `${scan.network.requestResponseStartMs} ms (${scan.coreWebVitals.requestResponseRating})`);
   console.log('  - Transferred Payload Size:   ', `${scan.network.payloadSizeKb} KB (${scan.network.contentLengthBytes} bytes)`);
   console.log('  - Content-Type:               ', scan.network.contentType);
   console.log('  - Content-Encoding:           ', scan.network.contentEncoding || 'None (Uncompressed)');
@@ -62,7 +71,7 @@ async function main() {
   console.log('  - Total Images Audited:       ', scan.dom.images.total);
 
   console.log('\nC. CORE WEB VITALS STATIC HEURISTICS TRANSPARENCY:');
-  console.log('  - Measured Metric: TTFB       ', `${scan.coreWebVitals.measuredTtfbMs} ms (${scan.coreWebVitals.ttfbRating})`);
+  console.log('  - Measured: Req -> Resp Start ', `${scan.coreWebVitals.requestResponseStartMs} ms (${scan.coreWebVitals.requestResponseRating})`);
   console.log('  - Measured: Blocking Scripts  ', `${scan.coreWebVitals.renderBlockingScriptsCount} scripts in <head>`);
   console.log('  - Measured: CLS Hazard Images ', `${scan.dom.images.missingDimensions} missing explicit dimensions`);
   console.log('  - Predictive: LCP Heuristic   ', `~${scan.coreWebVitals.estimatedLcpHeuristicMs} ms (${scan.coreWebVitals.estimatedLcpRating})`);
@@ -90,16 +99,49 @@ async function main() {
     console.log('  - AI Synthesis Status:         Unavailable / Warning logged');
   }
 
-  console.log('\nF. SUPABASE PERSISTENCE & APPROVAL QUEUE STATUS:');
-  console.log('  - Supabase seo_audits ID:     ', scan.savedAuditId ? `SUCCESS (${scan.savedAuditId})` : 'NOTE: Insert intercepted by RLS policy');
-  console.log('  - Queued Approval Request ID: ', scan.approvalId ? `SUCCESS (${scan.approvalId})` : 'NOTE: Insert intercepted by RLS policy');
+  console.log('\nF. AUTHENTICATED SUPABASE PERSISTENCE VERIFICATION:');
+  if (scan.savedAuditId) {
+    console.log('  - Supabase seo_audits ID:     ', `SUCCESS (${scan.savedAuditId})`);
+    // Independently retrieve the saved audit record to verify read permissions
+    const { data: retrievedAudit, error: auditReadErr } = await supabase
+      .from('seo_audits')
+      .select('id, target_url, score, audit_type')
+      .eq('id', scan.savedAuditId)
+      .single();
+
+    if (auditReadErr) {
+      console.error('    x Audit Row Retrieval Error:', auditReadErr.message);
+    } else {
+      console.log('    ✓ Verified Row Retrieval:    Target:', retrievedAudit.target_url, '| Score:', retrievedAudit.score);
+    }
+  } else {
+    console.log('  - Supabase seo_audits ID:      FAILED:', scan.persistenceError || 'Unknown persistence error');
+  }
+
+  if (scan.approvalId) {
+    console.log('  - Queued Approval Request ID: ', `SUCCESS (${scan.approvalId})`);
+    // Independently verify approval request status in database
+    const { data: retrievedAppr, error: apprReadErr } = await supabase
+      .from('approval_requests')
+      .select('id, title, status, risk_level')
+      .eq('id', scan.approvalId)
+      .single();
+
+    if (apprReadErr) {
+      console.error('    x Approval Row Retrieval Error:', apprReadErr.message);
+    } else {
+      console.log('    ✓ Verified Approval Queue:   Status:', retrievedAppr.status, '| Risk:', retrievedAppr.risk_level);
+    }
+  } else {
+    console.log('  - Queued Approval Request ID:  FAILED:', scan.approvalError || 'Unknown approval queue error');
+  }
 
   console.log('\n================================================================');
-  console.log('Phase 3.1 Live Network Verification Successfully Demonstrated!');
+  console.log('Phase 3.2 Live Network & Persistence Verification Complete!');
   console.log('================================================================');
 }
 
 main().catch((err) => {
-  console.error('Phase 3.1 Verification Error:', err);
+  console.error('Phase 3.2 Verification Error:', err);
   process.exit(1);
 });

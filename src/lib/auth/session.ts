@@ -27,21 +27,43 @@ export const DEMO_USERS: Record<string, UserSession> = {
   },
 };
 
+export const VALID_USER_ROLES: readonly UserRole[] = ['owner', 'admin', 'staff'];
+
+export function isValidUserRole(role: unknown): role is UserRole {
+  return typeof role === 'string' && VALID_USER_ROLES.includes(role as UserRole);
+}
+
+/**
+ * Resolves trusted user role strictly from database profile.
+ * NEVER trusts or reads user.user_metadata or raw_user_meta_data.
+ * If profile is missing, lookup fails, or role is invalid, returns 'staff' (unprivileged).
+ */
+export function resolveTrustedRole(
+  profile: { role?: any } | null | undefined,
+  profileError?: any
+): UserRole {
+  if (profileError || !profile || !isValidUserRole(profile.role)) {
+    return 'staff';
+  }
+  return profile.role;
+}
+
 /**
  * Retrieves the current session and user role.
  * Strictly verifies the session with Supabase Auth on the server.
  * Never defaults to owner without authentication.
+ * Never uses user_metadata.role for authorization.
  */
-export async function getServerSession(): Promise<UserSession | null> {
+export async function getServerSession(customClient?: any): Promise<UserSession | null> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const isSupabaseConfigured = Boolean(
     supabaseUrl && !supabaseUrl.includes('placeholder')
   );
 
-  // If live Supabase is configured, verify real session
-  if (isSupabaseConfigured) {
+  // If live Supabase is configured or custom client provided, verify real session
+  if (customClient || isSupabaseConfigured) {
     try {
-      const supabase = createClient();
+      const supabase = customClient || createClient();
       const {
         data: { user },
         error,
@@ -49,17 +71,21 @@ export async function getServerSession(): Promise<UserSession | null> {
 
       if (!error && user) {
         // Query user's profile for role from trusted database
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('role, full_name')
           .eq('id', user.id)
           .single();
 
+        // Strictly derive role from profiles table.
+        // User metadata role is NEVER trusted for authorization.
+        const role = resolveTrustedRole(profile, profileError);
+
         return {
           id: user.id,
           email: user.email || '',
-          role: (profile?.role as UserRole) || (user.user_metadata?.role as UserRole) || 'staff',
-          fullName: profile?.full_name || user.user_metadata?.full_name || 'KRIA User',
+          role,
+          fullName: (profile && !profileError && profile.full_name) || user.email || 'KRIA User',
           isDemo: false,
         };
       }

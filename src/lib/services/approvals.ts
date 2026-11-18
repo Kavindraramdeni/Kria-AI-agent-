@@ -56,16 +56,55 @@ export async function createApprovalRequest(
     }
 
     const supabase = customClient || createClient();
+
+    // Sanitize requested_by: must be a valid UUID or null for PostgreSQL uuid column
+    let validRequestedBy: string | null = null;
+    const isUuid = (val: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val);
+
+    if (request.requested_by && isUuid(request.requested_by)) {
+      validRequestedBy = request.requested_by;
+    } else {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user?.id && isUuid(authData.user.id)) {
+          validRequestedBy = authData.user.id;
+        } else if (request.requested_by && typeof request.requested_by === 'string' && request.requested_by.includes('@')) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('email', request.requested_by.trim())
+            .single();
+          if (prof?.id && isUuid(prof.id)) {
+            validRequestedBy = prof.id;
+          }
+        }
+      } catch {
+        // Fallback to null if unresolvable
+      }
+    }
+
+    const payload = {
+      action_type: request.action_type || 'content_publish',
+      title: request.title || 'Untitled Action Request',
+      proposed_content: request.proposed_content || {},
+      destination: request.destination || 'Unspecified Target',
+      agent_id: request.agent_id || null,
+      risk_level: request.risk_level || 'medium',
+      status: 'pending',
+      requested_by: validRequestedBy,
+    };
+
     const { data, error } = await supabase
       .from('approval_requests')
-      .insert([{
-        ...request,
-        status: 'pending',
-      }])
+      .insert([payload])
       .select()
       .single();
 
-    if (error) return { success: false, error: error.message };
+    if (error) {
+      console.warn('Supabase approval_requests insert error:', error.message);
+      return { success: false, error: error.message };
+    }
     return { success: true, data };
   } catch (err: any) {
     return { success: false, error: err.message };

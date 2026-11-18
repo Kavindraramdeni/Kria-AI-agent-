@@ -357,7 +357,7 @@ export default function SEOStudioPage() {
                     <span className="text-slate-400 text-xs">/100</span>
                   </div>
                   <span className="text-[10px] text-slate-400 font-mono">
-                    TTFB: {scanResult.network.ttfbMs}ms • Scripts: {scanResult.coreWebVitals.renderBlockingScriptsCount}
+                    Latency: {scanResult.network.requestResponseStartMs ?? scanResult.network.ttfbMs}ms • Scripts: {scanResult.coreWebVitals.renderBlockingScriptsCount}
                   </span>
                 </div>
 
@@ -402,22 +402,22 @@ export default function SEOStudioPage() {
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-400 italic">
-                  * Note: Server TTFB and assets are directly measured. LCP and CLS figures are predictive static heuristics; INP and real layout shifts require real-user monitoring (RUM) field data.
+                  * Note: Server request-to-response start latency and DOM asset counts are directly measured. LCP and CLS figures are predictive static heuristics; INP and real layout shifts require real-user monitoring (RUM) field data.
                 </p>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px]">
                   <div className="p-2.5 rounded-lg bg-kria-surface border border-kria-border/60">
-                    <span className="text-slate-400 text-[10px] block">Time to First Byte (TTFB)</span>
+                    <span className="text-slate-400 text-[10px] block">Req &rarr; Resp Start</span>
                     <div className="flex items-center justify-between mt-1">
-                      <span className="font-bold text-white font-mono">{scanResult.network.ttfbMs} ms</span>
+                      <span className="font-bold text-white font-mono">{scanResult.network.requestResponseStartMs ?? scanResult.network.ttfbMs} ms</span>
                       <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase font-bold ${
-                        scanResult.coreWebVitals.ttfbRating === 'good'
+                        (scanResult.coreWebVitals.requestResponseRating ?? scanResult.coreWebVitals.ttfbRating) === 'good'
                           ? 'bg-emerald-500/20 text-emerald-400'
-                          : scanResult.coreWebVitals.ttfbRating === 'needs-improvement'
+                          : (scanResult.coreWebVitals.requestResponseRating ?? scanResult.coreWebVitals.ttfbRating) === 'needs-improvement'
                           ? 'bg-amber-500/20 text-amber-300'
                           : 'bg-rose-500/20 text-rose-300'
                       }`}>
-                        {scanResult.coreWebVitals.ttfbRating}
+                        {scanResult.coreWebVitals.requestResponseRating ?? scanResult.coreWebVitals.ttfbRating}
                       </span>
                     </div>
                   </div>
