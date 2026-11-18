@@ -216,48 +216,70 @@ $ npm run lint
 # Exit Code: 0 (Zero ESLint warnings or errors)
 ```
 
-### 4. Empirical Live AI Invocation (`scripts/verify-seo-scanner-live.ts`)
+### 4. Empirical Live Network & Gemini AI Invocation (`scripts/verify-seo-scanner-live.ts`)
 ```
-========================================================
-KRIA AI Phase 3 — Live Website SEO & Core Web Vitals Scanner Verification
-========================================================
-Invoking Phase 3 Comprehensive SEO Scanner with Gemini 3.5 Flash Lite...
+================================================================
+KRIA AI Phase 3.1 — Live Network SEO & Core Web Vitals Verification
+================================================================
 
+--- Step 1: Performing Live Network Fetch to 'https://example.com' ---
+Validating against SSRF blocklist, local metadata, and resolving DNS...
 Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
-Execution completed in 2.67s
---------------------------------------------------------
-Target URL:             https://kriatech.com/products/magnetic-acrylic-frames
-Execution Mode:         mock
-Weighted Overall Score: 100/100
-Category Scores:
-  - Technical SEO:      100/100
-  - Performance & CWV:  100/100
-  - Mobile UX & Access: 100/100
-  - Structured Data:    100/100
-Network & Core Web Vitals:
-  - TTFB:               42ms (good)
-  - Compressed:         true (gzip)
-  - Payload Size:       2.2 KB
-  - Blocking Scripts:   0
-  - Missing Dim (CLS):  0
-Schema & Rich Results:
-  - Product Found:      true
-  - AggregateOffer:     true
-  - Rich Results Ok:    true
+Supabase seo_audits insert warning: new row violates row-level security policy for table "seo_audits"
 
-Gemini AI Remediation Directive (3.5 Flash Lite):
-Model:                  gemini-3.5-flash-lite
-Executive Summary:      KRIA TECH's magnetic acrylic frames page achieves a flawless 100/100 score across all technical, performance, and accessibility metrics with zero render-blocking issues. Primary conversion risks are minimal, though proactive monitoring of mobile engagement channels ensures sustained high conversion rates for custom fabrication inquiries.
-Top Priorities:
-  1. Maintain zero render-blocking scripts in the <head> to preserve the optimal 42ms TTFB performance.
-  2. Ensure continuous validation of AggregateOffer structured data schema for rich snippet preservation in local Hyderabad and national search results.
-  3. Monitor image asset optimization pipelines to retain 100% alt-tag and intrinsic dimension compliance as new product variations are added.
-Mobile UX Directive:    Implement a sticky WhatsApp and direct call inquiry button tailored for mobile users seeking rapid precision acrylic fabrication quotes in Hyderabad.
+✓ Live Scan Completed in 10.27s
+================================================================
+A. REAL NETWORK DIAGNOSTICS EVIDENCE:
+  - Target URL:                  https://example.com/
+  - Final Resolved URL:          https://example.com/
+  - HTTP Status:                 200 OK
+  - Execution Mode:              live_network (STRICTLY LIVE NETWORK)
+  - Measured Server TTFB:        924 ms (poor)
+  - Transferred Payload Size:    0.6 KB (577 bytes)
+  - Content-Type:                text/html; charset=utf-8
+  - Content-Encoding:            br
+  - Redirect Count:              0
 
-Detected Structural Issues: 0
-========================================================
-Phase 3 SEO Scanner Verification Successful!
-========================================================
+B. MEASURED DOM HEALTH & STRUCTURE:
+  - Document Title:              "Example Domain" (14 chars, status: short)
+  - Meta Description:            MISSING
+  - Canonical Status:            missing
+  - Headings Hierarchy:          H1: 0, H2: 0, H3: 0
+  - Total Anchor Links:          0
+  - Total Images Audited:        0
+
+C. CORE WEB VITALS STATIC HEURISTICS TRANSPARENCY:
+  - Measured Metric: TTFB        924 ms (poor)
+  - Measured: Blocking Scripts   0 scripts in <head>
+  - Measured: CLS Hazard Images  0 missing explicit dimensions
+  - Predictive: LCP Heuristic    ~1074 ms (good)
+  - Predictive: CLS Hazard Score 0 (good)
+  - INP Measurement Status:      requires_field_data_or_rum (Requires Chrome CrUX / RUM field data)
+  - Methodology:                 server_side_static_heuristic
+
+D. MULTI-CATEGORY DETERMINISTIC SCORES (0-100):
+  - Technical SEO Health:        32/100
+  - Performance & Asset CWV:     80/100
+  - Mobile UX & Accessibility:   90/100
+  - Structured Data / Schema:    0/100
+  - Weighted Overall Health:     49/100
+
+E. GOOGLE GEMINI 3.5 FLASH LITE SYNTHESIS:
+  - Model Invoked:               gemini-3.5-flash-lite
+  - Executive Summary:           KRIA TECH website performance is significantly limited by a poor server TTFB of 924ms and critical Technical SEO omissions, including missing H1 headings and schema markup. Resolving these factors is essential to improve organic search rankings and conversion rates in the Hyderabad manufacturing market.
+  - Top Remediation Priorities:
+      1. Implement edge caching and database query optimizations to reduce the 924ms Server Time To First Byte (TTFB).
+      2. Add a semantic <h1> heading tag wrapping the primary product or service title to correct fundamental SEO structure.
+      3. Deploy comprehensive Product and LocalBusiness structured data schemas to address the 0/100 rich results score.
+  - Mobile Action Directive:     Integrate a prominent sticky WhatsApp inquiry button for instant mobile quote requests.
+
+F. SUPABASE PERSISTENCE & APPROVAL QUEUE STATUS:
+  - Supabase seo_audits ID:      NOTE: Insert intercepted by RLS policy
+  - Queued Approval Request ID:  NOTE: Insert intercepted by RLS policy
+
+================================================================
+Phase 3.1 Live Network Verification Successfully Demonstrated!
+================================================================
 ```
 
 ---

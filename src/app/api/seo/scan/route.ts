@@ -7,6 +7,7 @@ import { performComprehensiveSeoScan } from '@/lib/services/seo-scanner';
  * POST /api/seo/scan
  * Performs live URL fetch, deep DOM parsing, Core Web Vitals diagnostics,
  * Schema.org Rich Results validation, and Gemini AI technical remediation.
+ * SSRF protected with IP and redirect validation; mock inputs strictly prohibited outside test environment.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -50,11 +51,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Execute Real SEO Scan
+    // 4. Execute Real SEO Scan (Mock input strictly prohibited outside test environment)
+    const isTestEnv = process.env.NODE_ENV === 'test';
     const scanResult = await performComprehensiveSeoScan({
       url: targetUrl,
-      mockHtml: typeof body.mockHtml === 'string' ? body.mockHtml : undefined,
-      mockHeaders: typeof body.mockHeaders === 'object' ? body.mockHeaders : undefined,
+      mockHtml: isTestEnv && typeof body.mockHtml === 'string' ? body.mockHtml : undefined,
+      mockHeaders: isTestEnv && typeof body.mockHeaders === 'object' ? body.mockHeaders : undefined,
       actorEmail: session.email,
     });
 
@@ -65,11 +67,34 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     const message = err.message || 'An unexpected error occurred during SEO scan.';
 
+    // SSRF Rejection
+    if (message.includes('SSRF Security Rejection')) {
+      return NextResponse.json(
+        {
+          error: message,
+          status: 'ssrf_blocked',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Protocol & Syntax errors
     if (message.includes('Invalid URL') || message.includes('Unsupported protocol')) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    if (message.includes('HTTP Fetch Failed') || message.includes('Network Scan Error')) {
+    // Payload size or redirect limit exceeded
+    if (message.includes('Response Size Exceeded') || message.includes('Redirect Loop')) {
+      return NextResponse.json({ error: message }, { status: 422 });
+    }
+
+    // Network / HTTP fetch failures
+    if (
+      message.includes('HTTP Fetch Failed') ||
+      message.includes('Network Scan Error') ||
+      message.includes('Network Scan Timeout') ||
+      message.includes('DNS Resolution Error')
+    ) {
       return NextResponse.json(
         {
           error: message,

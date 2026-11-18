@@ -1,50 +1,65 @@
 # KRIA AI — Marketing & Operations Command Center
 
-A standalone, AI-powered business growth and operations command center built specifically for **KRIA TECH** (custom manufacturing, CO2 laser cutting, sublimation printing, and personalized gifting).
+A high-precision, genuinely AI-powered business operations and growth platform built specifically for **KRIA TECH** (Hyderabad, India — precision custom manufacturing, CO2 laser cutting, cast acrylic fabrication, and personalized gifting).
 
-KRIA AI is an internal platform operating alongside the public KRIA TECH web property. It provides market intelligence, CRM pipeline management, SEO keyword clustering, content generation, and task automation with a **strict human-in-the-loop approval gate**.
-
----
-
-## 🛡️ Core Philosophy: Strict Human Approval Gate
-
-To protect KRIA TECH's reputation, ad spend, and live infrastructure, KRIA AI enforces a **zero-unauthorized-action policy**:
-- **No Automatic Publishing**: Social posts and articles are routed to the Approval Center as drafts.
-- **No Automatic Messaging**: Outbound quotes, WhatsApp messages, and client emails require explicit manager authorization.
-- **No Autonomous Ad Spend**: Campaign launches cannot bid or spend capital without approval.
-- **No Production Mutation**: Website UX and code proposals cannot modify live sites without explicit confirmation.
-- **Re-Verification at Execution**: The server re-checks approval validity at runtime; approval is single-use, not blanket permission.
+KRIA AI operates as an internal intelligence command center alongside KRIA TECH's web properties. It delivers live website SEO diagnostics, dynamic B2B wholesale quotation modeling, market intelligence, search intent clustering, content generation, and factory unit economics with a **strict human-in-the-loop approval gate**.
 
 ---
 
-## 🚀 Key Features
+## 🛡️ Core Philosophy: Strict Human Approval Gate & Execution Transparency
 
-| Module | Capability | Status |
-| :--- | :--- | :--- |
-| **Executive Overview** | Real KPIs, pending approval alerts, priority product spotlights, quick actions | ✅ Working |
-| **Product Catalog** | Full CRUD for acrylic photo frames, keychains, LED signs, and MDF cutouts with retail & bulk wholesale pricing | ✅ Working |
-| **Leads & CRM** | 7-stage pipeline (New, Contacted, Qualified, Quote Sent, Negotiation, Won, Lost), priority filters, CSV export | ✅ Working |
-| **Approval Center** | Mandatory single-use decision gate with risk levels (Low, Medium, High, Critical), review notes, and audit history | ✅ Working |
-| **AI Agent Center** | 6 specialized agent definitions (SEO, Content, Sales, Competitor, Website, Analyst) with typed schemas and safe offline fallback | ✅ Working |
-| **SEO Studio** | High-intent keyword tracking, cluster mapping, search intent classification (Commercial/Transactional/Informational) | ✅ Working |
-| **Content Studio** | Editorial calendar, Instagram caption and product description drafts with copy & approval routing | ✅ Working |
-| **Competitor Intelligence** | Public ethical competitor benchmarking (pricing structure, catalog comparison, KRIA edge) | ✅ Working |
-| **Campaigns Guardrail** | Marketing campaign drafting with budget guardrails and financial safety locks | ✅ Working |
-| **Operations Analytics** | Pipeline distribution, lead source breakdown, and catalog category proportions computed from live data | ✅ Working |
-| **Activity Audit Trail** | Append-only security log recording every user decision and agent proposal | ✅ Working |
-| **Settings & Automations** | Supabase connection status, AI key configuration, n8n webhook boundary triggers | ✅ Working |
+To protect KRIA TECH's brand reputation, customer relationships, advertising capital, and live infrastructure, KRIA AI enforces an uncompromising **zero-unauthorized-action policy**:
+- **No Autonomous Customer Messaging**: Quotations, WhatsApp messages, and client emails require explicit owner/admin authorization.
+- **No Autonomous Ad Spend**: Marketing campaign launches cannot allocate capital or trigger external ad APIs without human approval.
+- **No Uncontrolled Production Mutation**: Website UX, structured data, and code recommendations cannot alter live sites without passing the approval queue.
+- **Atomic Single-Use Dispatch**: The server re-verifies approval validity at runtime with mutex concurrency locking, single-use execution guards, and cryptographic SHA-256 audit hashing.
+- **Zero Simulation Deception**: All AI execution modes are reported honestly. If an API key is missing or a provider fails, the system reports errors explicitly—it never silently presents hardcoded copy as AI-generated.
+
+---
+
+## 🚀 Key Modules & AI Capabilities
+
+| Module | Engine & Integration | Operational Focus | Status |
+| :--- | :--- | :--- | :--- |
+| **Real Website SEO Scanner** | Live Network Fetch + DOM Parser + CWV Heuristics | SSRF-hardened URL scanner, measured TTFB, render-blocking `<head>` assets, image CLS hazards, Schema.org Rich Results, and Gemini technical remediation | ✅ Live AI |
+| **Content Studio Agent** | Google Gemini 3.5 Flash Lite (`@google/genai`) | Factory-grounded marketing copy, Instagram captions, SEO metadata, conflict detection engine overriding unverified claims | ✅ Live AI |
+| **SEO Strategy Agent** | Google Gemini 3.5 Flash Lite + Search Clusters | High-intent commercial/transactional keyword clustering, database persistence in `seo_keywords` | ✅ Live AI |
+| **Sales & CRM Lead Agent** | Gemini 3.5 Flash Lite + Dynamic Pricing Engine | Mathematical bulk tier pricing (50, 100, 250, 500 MOQ), below-MOQ routing, VIP reseller discounts, CRM sync | ✅ Live AI |
+| **Competitor Intelligence** | Gemini 3.5 Flash Lite + Market Matrix | Market pricing gap matrix, competitor comparison against wholesale acrylic fabricators, persistence in `competitor_reports` | ✅ Live AI |
+| **Website UX Audit Agent** | 100-Point Deterministic HTML Inspector | Accessibility, mobile viewport responsiveness, contrast, and optical specification audit | ✅ Live AI |
+| **Operations & Growth Analyst**| Factory Unit Economics Engine | Direct component COGS (raw acrylic, laser cutting, magnets, buffing, packing) & master sheet yields (70 units/sheet) | ✅ Live AI |
+| **Approval Center** | Mutex Lock + Idempotency Store + Cryptographic Ledger | Mandatory human approval gate with role enforcement (`owner` / `admin`) and risk levels (Low, Medium, High, Critical) | ✅ Hardened |
+| **Product Catalog** | KRIA Manufacturing Matrix (18 SKUs) | Authoritative specifications, dual-block magnetic desk frames, fridge magnets, keychains, wholesale pricing tiers | ✅ Live |
+| **Activity Audit Trail** | Immutable SHA-256 Hash Chain Ledger | Tamper-evident audit logging recording every operator decision, scan, and agent task | ✅ Hardened |
+
+---
+
+## 🔒 Security Architecture & SSRF Hardening
+
+1. **SSRF (Server-Side Request Forgery) Protection**:
+   - The Website SEO Scanner validates all target URLs and resolves DNS prior to making HTTP requests.
+   - Strictly blocks IPv4 loopback (`127.0.0.0/8`), private networks (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), link-local / cloud metadata (`169.254.0.0/16`, `metadata.google.internal`), carrier-grade NAT, broadcast, and IPv6 private/link-local ranges (`::1`, `fc00::/7`, `fe80::/10`).
+   - Re-validates destination URLs on **every redirect hop** (up to 5 hops max).
+   - Enforces strict 10-second timeout limits and 5 MB maximum response size limits.
+   - Mock HTML injection is strictly disabled outside test environments.
+2. **Server-Side Role Authorization**:
+   - Dispatch of approved critical and high-risk actions requires a verified `owner` or `admin` role from trusted server session data.
+   - Staff users are strictly rejected with HTTP 403 Forbidden.
+   - No email-substring role checks or client-controlled permissions.
+3. **Core Web Vitals Methodological Transparency**:
+   - Directly measures Server Time to First Byte (TTFB in ms) and DOM asset counts.
+   - Clearly identifies LCP and CLS figures as predictive static asset heuristics, explicitly noting that field Core Web Vitals and INP require real-user monitoring (RUM) or Chrome CrUX data.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Framework**: Next.js 14 App Router
-- **Language**: TypeScript (Strict Mode)
-- **Styling**: Tailwind CSS (Custom Dark Navy `#070B14` & Electric Blue `#2563EB` SaaS palette)
-- **Component Primitives**: Lucide Icons, clsx, tailwind-merge
-- **Database & Auth**: Supabase PostgreSQL + Auth + Storage
-- **Security**: Row-Level Security (RLS) on all exposed tables with authenticated policies
-- **Testing**: Vitest test runner (Unit, Schema, Approval Gate logic)
+- **Framework**: Next.js 14 App Router (Turbopack enabled)
+- **Language**: TypeScript 5 (Strict Mode)
+- **AI Engine**: Official Google Gen AI SDK (`@google/genai`) — Gemini 3.5 Flash Lite (`gemini-3.5-flash-lite`)
+- **Styling**: Tailwind CSS (Dark Navy `#070B14`, Electric Blue `#2563EB`, Emerald Green `#10B981`)
+- **Database & Auth**: Supabase PostgreSQL + Auth (Server-side session verification via `@supabase/ssr`)
+- **Testing**: Vitest 5 (134+ tests across 22 test suites)
 - **Validation**: Zod structured data schemas
 
 ---
@@ -54,12 +69,13 @@ To protect KRIA TECH's reputation, ad spend, and live infrastructure, KRIA AI en
 ### 1. Prerequisites
 - Node.js 18.18+ or 20+ (Tested on Node v22.20.0)
 - npm 10+
-- A Supabase account (or local demo mode)
+- A Google Gemini API Key (`GEMINI_API_KEY` or `GOOGLE_API_KEY`)
+- A Supabase Project (PostgreSQL database with Auth)
 
 ### 2. Installation
 ```bash
-git clone <repo-url>
-cd "Kria A!"
+git clone https://github.com/Kavindraramdeni/Kria-AI-agent-.git
+cd "Kria-AI-agent-"
 npm install
 ```
 
@@ -76,26 +92,25 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-# Server-Only (NEVER expose to client)
+# Server-Only Credentials (NEVER expose to client)
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# Optional AI Providers (Safe offline fallback enabled if omitted)
-OPENAI_API_KEY=your-openai-key
-ANTHROPIC_API_KEY=your-anthropic-key
+# Google Gemini AI Provider (Required for live agents & scanner)
+GEMINI_API_KEY=your-gemini-api-key
 
 # Optional Automation Webhook
 N8N_WEBHOOK_URL=https://your-n8n.com/webhook/kria
 ```
 
-> **Note on Offline Safe Mode**: If Supabase keys are not set, KRIA AI automatically boots in resilient **Demo Mode** with realistic sample data for magnetic acrylic photo frames, CRM leads, and approvals clearly marked with `DEMO DATA` tags. All UI and CRUD interactions remain fully functional.
-
 ### 4. Database Migrations & Seeding
 To apply the database schema to your Supabase project:
 1. Open your Supabase Dashboard SQL Editor.
 2. Execute the migration scripts in order:
-   - `supabase/migrations/20260101000000_init_schema.sql` (Creates all 16 tables, indexes, constraints)
+   - `supabase/migrations/20260101000000_init_schema.sql` (Creates all tables, indexes, constraints)
    - `supabase/migrations/20260101000001_rls_policies.sql` (Enforces RLS on every table)
-   - `supabase/migrations/20260101000002_seed_demo_data.sql` (Seeds realistic catalog & CRM data)
+   - `supabase/migrations/20260101000002_seed_demo_data.sql` (Seeds initial factory parameters)
+   - `supabase/migrations/20260101000003_rbac_rls_hardening.sql` (Hardens user roles)
+   - `supabase/migrations/20260101000004_audit_immutability.sql` (Enforces immutable audit ledger)
 3. Alternatively, run the Node seed script:
 ```bash
 npm run seed
@@ -109,39 +124,26 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 🧪 Testing, Type Checking & Linting
+## 🧪 Testing, Quality Control & Live Verification
 
-KRIA AI is built with strict quality controls:
+KRIA AI is built with zero-compromise testing standards:
 
 ```bash
-# Run Vitest test suite (Approval gate, CRM pipeline, Product specs)
+# Run Vitest test suite (All 22 test files, 134+ tests)
 npm test
 
-# Run TypeScript compiler verification
+# Run TypeScript compiler verification (0 errors required)
 npm run typecheck
 
-# Run Next.js ESLint verification
+# Run Next.js ESLint verification (0 warnings/errors required)
 npm run lint
+
+# Run standalone live network scanner verification against public target
+npx tsx scripts/verify-seo-scanner-live.ts
 ```
 
 ---
 
-## 🚢 Production Deployment (Vercel)
+## 📄 License & Attribution
 
-1. Push your repository to GitHub.
-2. Import the project into [Vercel](https://vercel.com).
-3. Set the Environment Variables:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `OPENAI_API_KEY` (optional)
-   - `N8N_WEBHOOK_URL` (optional)
-4. Deploy. Vercel automatically runs `npm run build` and optimizes static assets.
-
----
-
-## 🔒 Security Best Practices Implemented
-- **Zero Browser Key Leakage**: `SUPABASE_SERVICE_ROLE_KEY` is restricted to server-side code and will throw a fatal error if referenced in client bundles.
-- **Row-Level Security (RLS)**: Enforced across all 16 tables. Unauthenticated public access is rejected.
-- **Prompt Injection Defense**: Agent schemas treat external inputs, website content, and competitor pages as untrusted data.
-- **Audit Logging**: Every action, status change, and approval decision writes an immutable log entry in `activity_logs`.
+Proprietary internal command center developed for **KRIA TECH** (Hyderabad, India). All rights reserved.

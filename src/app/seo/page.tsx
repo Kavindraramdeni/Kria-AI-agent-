@@ -392,15 +392,18 @@ export default function SEOStudioPage() {
 
               {/* Core Web Vitals Diagnostic Strip */}
               <div className="p-4 rounded-xl bg-kria-850 border border-kria-border space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <span className="text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                     <Zap className="h-3.5 w-3.5 text-amber-400" />
-                    Core Web Vitals Server Diagnostics (Web Vitals 2026 Standards)
+                    Core Web Vitals Server Diagnostics & Static Asset Risk Heuristics
                   </span>
                   <span className="text-[10px] font-mono text-slate-400">
-                    Est. LCP: {scanResult.coreWebVitals.estimatedLcpMs}ms • Est. CLS: {scanResult.coreWebVitals.estimatedClsScore}
+                    Est. LCP Risk: ~{scanResult.coreWebVitals.estimatedLcpHeuristicMs ?? scanResult.coreWebVitals.estimatedLcpMs}ms • Est. CLS Risk: {scanResult.coreWebVitals.estimatedClsHazardScore ?? scanResult.coreWebVitals.estimatedClsScore}
                   </span>
                 </div>
+                <p className="text-[10px] text-slate-400 italic">
+                  * Note: Server TTFB and assets are directly measured. LCP and CLS figures are predictive static heuristics; INP and real layout shifts require real-user monitoring (RUM) field data.
+                </p>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px]">
                   <div className="p-2.5 rounded-lg bg-kria-surface border border-kria-border/60">

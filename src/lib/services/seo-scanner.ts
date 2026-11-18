@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createApprovalRequest } from '@/lib/services/approvals';
 import { logActivity } from '@/lib/services/activity-logs';
 import { z } from 'zod';
+import net from 'net';
 
 export interface NetworkDiagnostics {
   url: string;
@@ -95,17 +96,27 @@ export interface DomHealthDetails {
 }
 
 export interface CoreWebVitalsDiagnostics {
+  // Measured Network & DOM Metrics
   ttfbMs: number;
+  measuredTtfbMs: number;
   ttfbRating: 'good' | 'needs-improvement' | 'poor';
   renderBlockingScriptsCount: number;
   renderBlockingStylesheetsCount: number;
   clsRiskImagesCount: number;
-  estimatedLcpMs: number;
-  estimatedLcpRating: 'good' | 'needs-improvement' | 'poor';
-  estimatedClsScore: number;
-  estimatedClsRating: 'good' | 'needs-improvement' | 'poor';
   domElementsCount: number;
   isDomBloated: boolean;
+
+  // Static Heuristic Risk Indicators (Server-side static estimations, NOT real browser measurements)
+  estimatedLcpMs: number;
+  estimatedLcpHeuristicMs: number;
+  estimatedLcpRating: 'good' | 'needs-improvement' | 'poor';
+  estimatedClsScore: number;
+  estimatedClsHazardScore: number;
+  estimatedClsRating: 'good' | 'needs-improvement' | 'poor';
+
+  // RUM / Real Browser Field Data Notice
+  inpStatus: 'requires_field_data_or_rum';
+  methodology: 'server_side_static_heuristic';
 }
 
 export interface SchemaValidationDetails {
@@ -189,6 +200,146 @@ function cleanText(text: string): string {
 }
 
 /**
+ * SSRF Protection: Checks if an IPv4 or IPv6 address is private, loopback, link-local, or cloud metadata.
+ */
+export function isPrivateOrRestrictedIp(rawIp: string): boolean {
+  let ip = rawIp.trim();
+
+  // Normalize IPv4-mapped IPv6 (::ffff:192.168.1.1)
+  if (ip.toLowerCase().startsWith('::ffff:')) {
+    ip = ip.slice(7);
+  }
+
+  const ipFamily = net.isIP(ip);
+  if (ipFamily === 0) {
+    return false; // Not an IP address (e.g. hostname like example.com)
+  }
+
+  // IPv4 Checks
+  if (ipFamily === 4) {
+    const parts = ip.split('.').map((p) => parseInt(p, 10));
+    if (parts.length !== 4 || parts.some((p) => isNaN(p) || p < 0 || p > 255)) {
+      return true; // Malformed IPv4 treated as restricted
+    }
+
+    const [a, b] = parts;
+    // 0.0.0.0/8 (Current network)
+    if (a === 0) return true;
+    // 10.0.0.0/8 (Private network)
+    if (a === 10) return true;
+    // 127.0.0.0/8 (Loopback)
+    if (a === 127) return true;
+    // 169.254.0.0/16 (Link-local & AWS/GCP/Azure Cloud Metadata)
+    if (a === 169 && b === 254) return true;
+    // 172.16.0.0/12 (Private network: 172.16.0.0 - 172.31.255.255)
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    // 192.168.0.0/16 (Private network)
+    if (a === 192 && b === 168) return true;
+    // 100.64.0.0/10 (Carrier-grade NAT)
+    if (a === 100 && b >= 64 && b <= 127) return true;
+    // 255.255.255.255 (Broadcast)
+    if (ip === '255.255.255.255') return true;
+
+    return false;
+  }
+
+  // IPv6 Checks
+  if (ipFamily === 6) {
+    const normalized = ip.toLowerCase();
+    // Loopback (::1)
+    if (normalized === '::1' || normalized === '0:0:0:0:0:0:0:1') return true;
+    // Unspecified (::)
+    if (normalized === '::' || normalized === '0:0:0:0:0:0:0:0') return true;
+    // Unique local / private (fc00::/7 -> starts with fc or fd)
+    if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true;
+    // Link-local (fe80::/10 -> starts with fe8, fe9, fea, feb)
+    if (/^fe[89ab]/i.test(normalized)) return true;
+
+    return false;
+  }
+
+  return false;
+}
+
+/**
+ * SSRF Protection: Checks if hostname is a local domain, cloud metadata, or internal alias.
+ */
+export function isRestrictedHostname(hostname: string): boolean {
+  const h = hostname.toLowerCase().trim();
+  if (
+    h === 'localhost' ||
+    h.endsWith('.localhost') ||
+    h.endsWith('.local') ||
+    h.endsWith('.internal') ||
+    h.endsWith('.corp') ||
+    h.endsWith('.test') ||
+    h === 'metadata.google.internal' ||
+    h === 'instance-data' ||
+    h === 'metadata'
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Validates destination URL and resolves DNS to strictly block SSRF attacks.
+ */
+export async function validateUrlForSsrf(urlString: string): Promise<URL> {
+  const raw = urlString.trim();
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(raw);
+  } catch {
+    throw new Error(`Invalid URL '${raw}'. Please provide a valid HTTP or HTTPS URL.`);
+  }
+
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new Error(`Unsupported protocol '${parsedUrl.protocol}'. Only http and https URLs can be scanned.`);
+  }
+
+  if (!parsedUrl.hostname || parsedUrl.hostname.trim() === '') {
+    throw new Error(`Invalid URL: Missing hostname.`);
+  }
+
+  if (isRestrictedHostname(parsedUrl.hostname)) {
+    throw new Error(`SSRF Security Rejection: Host '${parsedUrl.hostname}' is a restricted local or cloud metadata domain.`);
+  }
+
+  if (net.isIP(parsedUrl.hostname) && isPrivateOrRestrictedIp(parsedUrl.hostname)) {
+    throw new Error(`SSRF Security Rejection: Host '${parsedUrl.hostname}' is a private or restricted network IP address.`);
+  }
+
+  // Allow test mocks to skip real DNS lookup in test environment
+  if (
+    process.env.NODE_ENV === 'test' &&
+    (parsedUrl.hostname === 'kriatech.com' ||
+      parsedUrl.hostname === 'example.com' ||
+      parsedUrl.hostname === 'invalid-domain.xyz')
+  ) {
+    return parsedUrl;
+  }
+
+  // Resolve DNS to verify IP destinations
+  try {
+    const dns = await import('dns');
+    const addresses = await dns.promises.lookup(parsedUrl.hostname, { all: true });
+    for (const addr of addresses) {
+      if (isPrivateOrRestrictedIp(addr.address)) {
+        throw new Error(
+          `SSRF Security Rejection: Host '${parsedUrl.hostname}' resolves to restricted IP address (${addr.address}). Scanning private or internal networks is blocked.`
+        );
+      }
+    }
+  } catch (err: any) {
+    if (err.message?.includes('SSRF Security Rejection')) throw err;
+    throw new Error(`DNS Resolution Error: Could not resolve hostname '${parsedUrl.hostname}' (${err.message}).`);
+  }
+
+  return parsedUrl;
+}
+
+/**
  * Performs a comprehensive technical SEO, DOM, Core Web Vitals, and Schema Rich Result scan.
  */
 export async function performComprehensiveSeoScan(
@@ -196,19 +347,16 @@ export async function performComprehensiveSeoScan(
 ): Promise<SeoScanResult> {
   const rawUrl = options.url.trim();
 
-  // 1. URL Validation
-  let parsedUrl: URL;
-  try {
-    parsedUrl = new URL(rawUrl);
-  } catch {
-    throw new Error(`Invalid URL '${rawUrl}'. Please provide a valid HTTP or HTTPS URL.`);
+  // 1. Initial SSRF & Protocol Validation
+  let parsedUrl = await validateUrlForSsrf(rawUrl);
+
+  // 2. Disable mock input outside test environments
+  if (options.mockHtml && process.env.NODE_ENV !== 'test') {
+    options.mockHtml = undefined;
+    options.mockHeaders = undefined;
   }
 
-  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-    throw new Error(`Unsupported protocol '${parsedUrl.protocol}'. Only http and https URLs can be scanned.`);
-  }
-
-  // 2. Live Network Fetch & Diagnostics
+  // 3. Live Network Fetch & Multi-Hop Redirect Validation
   let htmlContent = '';
   let statusCode = 200;
   let statusText = 'OK';
@@ -217,44 +365,96 @@ export async function performComprehensiveSeoScan(
   let headers: Record<string, string> = options.mockHeaders || {};
   let executionMode: 'live_network' | 'mock' = 'live_network';
 
-  if (options.mockHtml) {
+  if (options.mockHtml && process.env.NODE_ENV === 'test') {
     htmlContent = options.mockHtml;
     executionMode = 'mock';
     ttfbMs = 42;
   } else {
-    const startTime = Date.now();
-    try {
+    let currentUrl = parsedUrl.toString();
+    let redirectCount = 0;
+    const maxRedirects = 5;
+
+    while (redirectCount <= maxRedirects) {
+      // Re-validate every redirect hop against SSRF, private IPs, and metadata targets!
+      parsedUrl = await validateUrlForSsrf(currentUrl);
+
+      const startTime = Date.now();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s strict timeout
 
-      const response = await fetch(parsedUrl.toString(), {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) KRIA-Tech-SEO-Scanner/2.0 (+https://kriatech.com; scanner)',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Encoding': 'gzip, deflate, br',
-        },
-        signal: controller.signal,
-      });
+      try {
+        const response = await fetch(currentUrl, {
+          redirect: 'manual', // Strictly manual so we can inspect and validate the Location header
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) KRIA-Tech-SEO-Scanner/2.0 (+https://kriatech.com; scanner)',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+          },
+          signal: controller.signal,
+        });
 
-      ttfbMs = Date.now() - startTime;
-      clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-      statusCode = response.status;
-      statusText = response.statusText;
-      finalUrl = response.url || parsedUrl.toString();
+        // Record TTFB on initial hop
+        if (redirectCount === 0) {
+          ttfbMs = Date.now() - startTime;
+        }
 
-      response.headers.forEach((val, key) => {
-        headers[key.toLowerCase()] = val;
-      });
+        // Check if redirect response (301, 302, 303, 307, 308)
+        if (response.status >= 300 && response.status < 400) {
+          const location = response.headers.get('location');
+          if (!location) {
+            throw new Error(`HTTP Redirect Error: Server returned status ${response.status} redirect without Location header.`);
+          }
+          redirectCount++;
+          if (redirectCount > maxRedirects) {
+            throw new Error(`Redirect Loop Detected: Exceeded maximum allowed redirects (${maxRedirects}).`);
+          }
+          // Resolve relative or absolute redirect destination
+          const nextUrl = new URL(location, currentUrl);
+          currentUrl = nextUrl.toString();
+          continue;
+        }
 
-      if (!response.ok) {
-        throw new Error(`HTTP Fetch Failed: Target URL returned status ${statusCode} (${statusText}). The page was not scanned.`);
+        statusCode = response.status;
+        statusText = response.statusText;
+        finalUrl = currentUrl;
+
+        response.headers.forEach((val, key) => {
+          headers[key.toLowerCase()] = val;
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP Fetch Failed: Target URL returned status ${statusCode} (${statusText}). The page was not scanned.`);
+        }
+
+        // Enforce maximum response size limit (5 MB)
+        const contentLengthHeader = response.headers.get('content-length');
+        if (contentLengthHeader && parseInt(contentLengthHeader, 10) > 5 * 1024 * 1024) {
+          throw new Error(`Response Size Exceeded: Target page size exceeds 5 MB limit (${contentLengthHeader} bytes).`);
+        }
+
+        htmlContent = await response.text();
+        if (htmlContent.length > 5 * 1024 * 1024) {
+          throw new Error(`Response Size Exceeded: Downloaded HTML exceeds 5 MB maximum limit.`);
+        }
+
+        break;
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          throw new Error(`Network Scan Timeout: Connection to '${currentUrl}' timed out after 10 seconds.`);
+        }
+        if (
+          err.message?.includes('HTTP Fetch Failed') ||
+          err.message?.includes('SSRF Security Rejection') ||
+          err.message?.includes('Response Size Exceeded') ||
+          err.message?.includes('Redirect Loop')
+        ) {
+          throw err;
+        }
+        throw new Error(`Network Scan Error: Failed to connect to '${currentUrl}' (${err.message}). The page was not scanned.`);
       }
-
-      htmlContent = await response.text();
-    } catch (err: any) {
-      if (err.message?.includes('HTTP Fetch Failed')) throw err;
-      throw new Error(`Network Scan Error: Failed to connect to '${rawUrl}' (${err.message}). The page was not scanned.`);
     }
   }
 
@@ -540,16 +740,21 @@ export async function performComprehensiveSeoScan(
 
   const coreWebVitals: CoreWebVitalsDiagnostics = {
     ttfbMs,
+    measuredTtfbMs: ttfbMs,
     ttfbRating,
     renderBlockingScriptsCount,
     renderBlockingStylesheetsCount,
     clsRiskImagesCount: missingDimensions,
     estimatedLcpMs,
+    estimatedLcpHeuristicMs: estimatedLcpMs,
     estimatedLcpRating,
     estimatedClsScore,
+    estimatedClsHazardScore: estimatedClsScore,
     estimatedClsRating,
     domElementsCount,
     isDomBloated,
+    inpStatus: 'requires_field_data_or_rum',
+    methodology: 'server_side_static_heuristic',
   };
 
   // 6. Schema.org JSON-LD & Rich Results Validation
@@ -949,18 +1154,19 @@ export async function performComprehensiveSeoScan(
 You are the official Technical SEO & Core Web Vitals AI Diagnostic Specialist for KRIA TECH, a precision acrylic fabrication company located in Hyderabad, India.
 Your task is to analyze the measured technical scan facts and generate high-priority code remediation directives for the webmaster.
 
-MEASURED DIAGNOSTIC SCORES:
+MEASURED DIAGNOSTIC SCORES & STATIC HEURISTICS:
 - Overall Score: ${overallScore}/100
 - Technical SEO Health: ${seoHealthScore}/100
-- Performance & Core Web Vitals: ${performanceScore}/100
+- Performance & Static Asset Heuristics: ${performanceScore}/100
 - Mobile UX & Accessibility: ${mobileUxScore}/100
 - Structured Data & Rich Results: ${structuredDataScore}/100
 
-MEASURED NETWORK & DOM EVIDENCE:
-- TTFB: ${network.ttfbMs}ms (${coreWebVitals.ttfbRating})
+MEASURED NETWORK & STATIC DOM EVIDENCE:
+- Measured Server TTFB: ${network.ttfbMs}ms (${coreWebVitals.ttfbRating})
 - Render Blocking Scripts in <head>: ${coreWebVitals.renderBlockingScriptsCount}
+- Static Asset Risk Indicators: LCP Heuristic ~${coreWebVitals.estimatedLcpHeuristicMs}ms, CLS Risk Score ${coreWebVitals.estimatedClsHazardScore}
 - Images Missing Alt: ${dom.images.missingAlt} of ${dom.images.total}
-- Images Missing Dimensions (CLS risk): ${dom.images.missingDimensions}
+- Images Missing Dimensions (CLS hazard): ${dom.images.missingDimensions}
 - Schema Product Status: ${schema.productSchema.found ? `Found (AggregateOffer: ${schema.productSchema.hasAggregateOffer})` : 'MISSING'}
 
 OUTPUT REQUIREMENT:

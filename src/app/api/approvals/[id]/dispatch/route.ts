@@ -41,7 +41,7 @@ export async function POST(
       );
     }
 
-    // Verify server-side authentication
+    // 1. Verify server-side authentication
     const session = await getServerSession();
     if (!session) {
       return NextResponse.json(
@@ -50,11 +50,22 @@ export async function POST(
       );
     }
 
+    // 2. Enforce server-side role authorization: Only owner or admin can dispatch approved actions
+    if (session.role !== 'owner' && session.role !== 'admin') {
+      return NextResponse.json(
+        { error: `Forbidden: Insufficient privileges. Role '${session.role}' cannot dispatch approved actions.` },
+        { status: 403 }
+      );
+    }
+
     // Check Idempotency-Key header or body
     const headerIdempotencyKey = req.headers.get('idempotency-key') || req.headers.get('x-idempotency-key');
 
-    // Trusted server-controlled actor email from verified session
-    const actorEmail = session.email;
+    // Trusted server-controlled actor identity from verified session
+    const actor = {
+      email: session.email,
+      role: session.role,
+    };
     let bodyIdempotencyKey: string | undefined;
 
     try {
@@ -67,9 +78,20 @@ export async function POST(
     }
 
     const idempotencyKey = headerIdempotencyKey || bodyIdempotencyKey;
-    const result = await executeApprovedAction(approvalId, actorEmail, idempotencyKey);
+    const result = await executeApprovedAction(approvalId, actor, idempotencyKey);
 
     if (!result.success) {
+      if (result.error_code === 'CRITICAL_ACTION_RESTRICTED') {
+        return NextResponse.json(
+          {
+            success: false,
+            error_code: result.error_code,
+            error: result.error,
+          },
+          { status: 403 }
+        );
+      }
+
       if (result.error_code === 'ALREADY_EXECUTED' || result.error_code === 'CONCURRENCY_LOCKED') {
         return NextResponse.json(
           {
@@ -81,24 +103,35 @@ export async function POST(
         );
       }
 
-      if (result.error_code === 'NOT_APPROVED' || result.error_code === 'CRITICAL_ACTION_RESTRICTED') {
+      if (result.error_code === 'NOT_FOUND') {
         return NextResponse.json(
           {
             success: false,
             error_code: result.error_code,
             error: result.error,
           },
-          { status: 403 } // Forbidden
+          { status: 404 }
+        );
+      }
+
+      if (result.error_code === 'NOT_APPROVED') {
+        return NextResponse.json(
+          {
+            success: false,
+            error_code: result.error_code,
+            error: result.error,
+          },
+          { status: 422 } // Unprocessable Entity
         );
       }
 
       return NextResponse.json(
         {
           success: false,
-          error_code: result.error_code || 'BAD_REQUEST',
-          error: result.error || 'Execution blocked by security gate.',
+          error_code: result.error_code,
+          error: result.error,
         },
-        { status: 400 }
+        { status: 500 }
       );
     }
 
@@ -109,12 +142,13 @@ export async function POST(
       destination: result.destination,
       executed_at: result.executed_at,
       idempotency_key: result.idempotency_key,
-      dispatch_payload: result.dispatch_payload,
+      payload: result.dispatch_payload,
+      message: 'Action successfully dispatched and permanently recorded in immutable audit log.',
     });
   } catch (error: any) {
-    console.error('API Dispatch execution error:', error);
+    console.error('Approval dispatch execution error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error during dispatch.' },
+      { error: error.message || 'Action dispatch failed.' },
       { status: 500 }
     );
   }
