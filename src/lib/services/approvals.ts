@@ -33,7 +33,7 @@ export async function createApprovalRequest(
 ): Promise<{ success: boolean; data?: ApprovalRequest; error?: string }> {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
+    if (!customClient && (!supabaseUrl || supabaseUrl.includes('placeholder'))) {
       const newApproval: ApprovalRequest = {
         id: 'appr-' + Date.now(),
         action_type: request.action_type || 'content_publish',

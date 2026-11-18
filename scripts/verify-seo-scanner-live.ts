@@ -14,16 +14,27 @@ async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+  const adminEmail = process.env.KRIA_ADMIN_EMAIL || process.env.SUPABASE_AUTH_EMAIL;
+  const adminPassword = process.env.KRIA_ADMIN_PASSWORD || process.env.SUPABASE_AUTH_PASSWORD;
+
+  if (!adminEmail || !adminPassword) {
+    console.error('Authentication Error: KRIA_ADMIN_EMAIL or KRIA_ADMIN_PASSWORD environment variables are missing.');
+    console.error('Configure them in .env.local to run live authenticated verification.');
+    process.exit(1);
+  }
+
   let authenticatedUserEmail: string | null = null;
   let authUserId: string | null = null;
 
   try {
     const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
-      email: 'admin@kriatech.com',
-      password: 'kria-demo-pass-2026',
+      email: adminEmail.trim(),
+      password: adminPassword,
     });
     if (authErr) {
       console.error('Supabase Auth Failed:', authErr.message);
+      process.exit(1);
     } else if (authData?.user) {
       authenticatedUserEmail = authData.user.email || null;
       authUserId = authData.user.id;
@@ -34,6 +45,7 @@ async function main() {
     }
   } catch (err: any) {
     console.error('Supabase Auth Exception:', err.message);
+    process.exit(1);
   }
 
   // 2. Perform Real Live Network Fetch with DNS Pinning (ZERO mockHtml / ZERO mockHeaders)

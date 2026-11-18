@@ -46,6 +46,7 @@ export interface ContentGenerationRequest {
   language?: string;
   topic_or_prompt?: string;
   actor_email?: string;
+  supabaseClient?: any;
 }
 
 export type ContentAgentOutput = z.infer<typeof ContentAgentOutputSchema>;
@@ -58,7 +59,9 @@ export interface ContentGenerationResult {
   model_name?: string;
   output?: ContentAgentOutput;
   saved_content_id?: string;
+  persistence_error?: string;
   approval_id?: string;
+  approval_error?: string;
   conflicts_detected?: ProductConflict[];
   error?: string;
 }
@@ -208,15 +211,18 @@ ${PROMPT_INJECTION_DEFENSE}
 
   // 4. Persist in Supabase content_items table
   let savedContentId: string | undefined;
+  let persistenceError: string | undefined;
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (process.env.NODE_ENV === 'test' || (supabaseUrl && !supabaseUrl.includes('placeholder'))) {
-      let supabase: any;
-      try {
-        supabase = createClient();
-      } catch {
-        const { createClient: createBrowserClient } = await import('@/lib/supabase/client');
-        supabase = createBrowserClient();
+      let supabase: any = req.supabaseClient;
+      if (!supabase) {
+        try {
+          supabase = createClient();
+        } catch {
+          const { createClient: createBrowserClient } = await import('@/lib/supabase/client');
+          supabase = createBrowserClient();
+        }
       }
 
       const { data, error } = await supabase
@@ -238,20 +244,23 @@ ${PROMPT_INJECTION_DEFENSE}
         .single();
 
       if (error) {
+        persistenceError = error.message;
         console.warn('Supabase content_items insert warning:', error.message);
       } else if (data) {
         savedContentId = data.id;
       }
     }
   } catch (persistErr: any) {
-    console.error('Warning: Failed to persist generated content in Supabase content_items:', persistErr);
+    persistenceError = persistErr?.message || String(persistErr);
+    console.warn('Warning: Failed to persist generated content in Supabase content_items:', persistErr);
   }
 
   // 5. Submit Draft to Approval Queue (Human Gate Enforcement - Requirement 8)
   let approvalId: string | undefined;
+  let approvalError: string | undefined;
   try {
-    const approvalRes = await createApprovalRequest({
-      action_type: 'content_publish',
+    const approvalPayload = {
+      action_type: 'content_publish' as const,
       title: `Publish Review: ${generated.title}`,
       proposed_content: {
         sku: sku || 'UNSPECIFIED',
@@ -271,15 +280,22 @@ ${PROMPT_INJECTION_DEFENSE}
           ? 'Instagram / Social Feed'
           : 'KRIA TECH Storefront CMS',
       agent_id: 'content-agent',
-      risk_level: 'medium',
+      risk_level: 'medium' as const,
       requested_by: req.actor_email || 'admin@kriatech.com',
-    });
+    };
+
+    const approvalRes = req.supabaseClient
+      ? await createApprovalRequest(approvalPayload, req.supabaseClient)
+      : await createApprovalRequest(approvalPayload);
 
     if (approvalRes.success && approvalRes.data) {
       approvalId = approvalRes.data.id;
+    } else if (approvalRes.error) {
+      approvalError = approvalRes.error;
     }
-  } catch (approvalErr: any) {
-    console.error('Warning: Failed to route content to Approval Gate:', approvalErr);
+  } catch (apprErr: any) {
+    approvalError = apprErr?.message || String(apprErr);
+    console.warn('Warning: Failed to route content to Approval Gate:', apprErr);
   }
 
   // 6. Log Agent Task Activity
@@ -297,7 +313,7 @@ ${PROMPT_INJECTION_DEFENSE}
       approval_id: approvalId,
       conflicts_count: conflicts.length,
     },
-  });
+  }, req.supabaseClient);
 
   // 7. Return Honest Live AI Metadata
   return {
@@ -308,7 +324,9 @@ ${PROMPT_INJECTION_DEFENSE}
     model_name: geminiResult.model,
     output: generated,
     saved_content_id: savedContentId,
+    persistence_error: persistenceError,
     approval_id: approvalId,
+    approval_error: approvalError,
     conflicts_detected: conflicts,
   };
 }

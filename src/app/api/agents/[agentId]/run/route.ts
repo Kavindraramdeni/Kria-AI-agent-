@@ -15,6 +15,7 @@ import { logActivity } from '@/lib/services/activity-logs';
 import { calculateWholesaleQuote } from '@/lib/services/pricing-engine';
 import { KRIA_CATALOG_VARIANTS, KRIA_TECH_MANUFACTURING_SPECS } from '@/lib/data/kria-catalog-matrix';
 import { getServerSession } from '@/lib/auth/session';
+import { createClient } from '@/lib/supabase/server';
 import { executeContentStudioAgent } from '@/lib/services/content-studio';
 import { executeSEOStrategyAgent } from '@/lib/services/seo-strategy';
 import { executeSalesLeadAgent } from '@/lib/services/sales-lead-agent';
@@ -71,6 +72,10 @@ export async function POST(
     const taskType = body.task_type || 'standard_generation';
 
     let validatedOutput: any;
+    let supabase: any;
+    try {
+      supabase = createClient();
+    } catch {}
 
     // Execute agent logic grounded in KRIA TECH manufacturing parameters
     switch (agentId) {
@@ -84,6 +89,7 @@ export async function POST(
           target_audience: body.target_audience,
           topic_or_prompt: typeof input === 'string' ? input : body.topic_or_prompt,
           actor_email: session.email,
+          supabaseClient: supabase,
         });
 
         if (!seoResult.success) {
@@ -127,6 +133,7 @@ export async function POST(
           language: body.language,
           topic_or_prompt: typeof input === 'string' ? input : body.topic_or_prompt,
           actor_email: session.email,
+          supabaseClient: supabase,
         });
 
         if (!generationResult.success) {

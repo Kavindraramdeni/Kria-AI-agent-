@@ -29,15 +29,18 @@ export async function getActivityLogs(): Promise<{ data: ActivityLog[]; isLive: 
   }
 }
 
-export async function logActivity(entry: {
-  entity_type: string;
-  entity_id?: string;
-  action: string;
-  description: string;
-  actor_type?: 'user' | 'agent' | 'system';
-  actor_id?: string;
-  metadata?: Record<string, any>;
-}): Promise<ActivityLog> {
+export async function logActivity(
+  entry: {
+    entity_type: string;
+    entity_id?: string;
+    action: string;
+    description: string;
+    actor_type?: 'user' | 'agent' | 'system';
+    actor_id?: string;
+    metadata?: Record<string, any>;
+  },
+  customClient?: any
+): Promise<ActivityLog> {
   try {
     const createdAt = new Date().toISOString();
     const latestExisting = DEMO_ACTIVITY_LOGS[0];
@@ -70,15 +73,15 @@ export async function logActivity(entry: {
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
-      const supabase = createClient();
+      const supabase = customClient || createClient();
       const { id, ...supabaseLog } = newLog;
       const { error } = await supabase.from('activity_logs').insert([supabaseLog]);
-      if (error) console.error('Supabase activity log error:', error.message);
+      if (error) console.warn('Supabase activity log error:', error.message);
     }
 
     return newLog;
   } catch (err) {
-    console.error('Failed to log activity:', err);
+    console.warn('Failed to log activity:', err);
     throw err;
   }
 }
