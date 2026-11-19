@@ -1610,7 +1610,7 @@ ${issues.slice(0, 5).map((i) => `* [${i.severity.toUpperCase()}] ${i.issue}: ${i
       destination: `Live Website Production (${finalUrl})`,
       agent_id: 'website-agent',
       risk_level: 'high' as const,
-      requested_by: options.actorEmail || 'admin@kriatech.com',
+      requested_by: options.actorEmail || null,
     };
 
     const approvalRes = options.supabaseClient

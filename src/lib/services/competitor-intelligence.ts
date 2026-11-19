@@ -290,7 +290,7 @@ ${PROMPT_INJECTION_DEFENSE}
       destination: `Market Strategy & Positioning Channels (Storefront & B2B Proposals)`,
       agent_id: 'competitor-agent',
       risk_level: 'low' as const,
-      requested_by: req.actor_email || 'admin@kriatech.com',
+      requested_by: req.actor_email || null,
     };
 
     const approvalRes = req.supabaseClient

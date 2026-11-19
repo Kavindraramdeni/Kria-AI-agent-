@@ -48,6 +48,7 @@ export default function LeadsPage() {
   const [activeStage, setActiveStage] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
 
   // Modals & Drawers
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -79,7 +80,21 @@ export default function LeadsPage() {
 
   useEffect(() => {
     loadLeads();
+    loadUser();
   }, []);
+
+  async function loadUser() {
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user?.email) setCurrentUserEmail(user.email);
+    } catch {
+      // Fallback
+    }
+  }
 
   useEffect(() => {
     if (selectedLead) {
@@ -131,7 +146,7 @@ export default function LeadsPage() {
         action: 'lead_created',
         description: `New lead created: ${res.data.name} (${res.data.business_name || 'Retail Inquiry'})`,
         actor_type: 'user',
-        actor_id: 'admin@kriatech.com',
+        actor_id: currentUserEmail || 'user',
       });
       setIsAddModalOpen(false);
       resetForm();
@@ -151,6 +166,7 @@ export default function LeadsPage() {
         action: 'status_changed',
         description: `Moved ${lead?.name || 'lead'} to ${newStatus}`,
         actor_type: 'user',
+        actor_id: currentUserEmail || 'user',
       });
       setLeads((prev) =>
         prev.map((l) => (l.id === id ? { ...l, status: newStatus } : l))
@@ -168,7 +184,7 @@ export default function LeadsPage() {
     const res = await addLeadActivity(selectedLead.id, {
       activity_type: activityType,
       description: activityDesc.trim(),
-      performed_by: 'admin@kriatech.com',
+      performed_by: currentUserEmail || 'user',
     });
 
     if (res.success) {

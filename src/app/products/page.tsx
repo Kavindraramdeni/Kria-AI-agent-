@@ -92,6 +92,7 @@ function classifyProduct(product: Product): ProductClassification {
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +131,19 @@ export default function ProductsPage() {
   // Load Products from Supabase on mount
   useEffect(() => {
     loadProducts();
+    async function loadUser() {
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user?.email) setCurrentUserEmail(user.email);
+      } catch {
+        // Fallback
+      }
+    }
+    loadUser();
   }, []);
 
   async function loadProducts(isRefresh = false) {
@@ -270,7 +284,7 @@ export default function ProductsPage() {
         action: 'product_created',
         description: `Added product: ${res.data.name} (${res.data.sku}) with status ${res.data.status}`,
         actor_type: 'user',
-        actor_id: 'admin@kriatech.com',
+        actor_id: currentUserEmail || 'user',
       });
       setIsAddModalOpen(false);
       loadProducts(true);
@@ -312,7 +326,7 @@ export default function ProductsPage() {
         action: 'product_updated',
         description: `Updated specs for ${res.data.name} (${res.data.sku}). Status: ${res.data.status}`,
         actor_type: 'user',
-        actor_id: 'admin@kriatech.com',
+        actor_id: currentUserEmail || 'user',
       });
       setIsEditModalOpen(false);
       if (selectedProduct && selectedProduct.id === res.data.id) {

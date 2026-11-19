@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Header } from '@/components/layout/header';
 import { getApprovals, updateApprovalStatus } from '@/lib/services/approvals';
 import { logActivity } from '@/lib/services/activity-logs';
+import { createClient } from '@/lib/supabase/client';
 import { ApprovalRequest, ApprovalStatus } from '@/types/approval';
 import {
   ShieldCheck,
@@ -19,10 +20,26 @@ export default function ApprovalsPage() {
   const [revisionNotes, setRevisionNotes] = useState('');
   const [loading, setLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState('');
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
 
   useEffect(() => {
     loadApprovals();
+    loadCurrentUser();
   }, []);
+
+  async function loadCurrentUser() {
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user?.email) {
+        setCurrentUserEmail(user.email);
+      }
+    } catch {
+      // Silent fallback
+    }
+  }
 
   async function loadApprovals() {
     setLoading(true);
@@ -32,7 +49,7 @@ export default function ApprovalsPage() {
   }
 
   async function handleDecision(id: string, status: ApprovalStatus, notes?: string) {
-    const reviewer = 'admin@kriatech.com';
+    const reviewer = currentUserEmail || 'authorized-reviewer';
     const res = await updateApprovalStatus(id, status, reviewer, notes);
 
     if (res.success) {
@@ -58,7 +75,6 @@ export default function ApprovalsPage() {
       const resp = await fetch(`/api/approvals/${id}/dispatch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actor_email: 'admin@kriatech.com' }),
       });
       const res = await resp.json();
 

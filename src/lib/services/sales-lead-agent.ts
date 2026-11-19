@@ -303,7 +303,7 @@ ${PROMPT_INJECTION_DEFENSE}
       destination: `Customer Outreach Channel (WhatsApp / Email)`,
       agent_id: 'sales-agent',
       risk_level: 'medium',
-      requested_by: req.actor_email || 'admin@kriatech.com',
+      requested_by: req.actor_email || null,
     });
 
     if (approvalRes.success && approvalRes.data) {

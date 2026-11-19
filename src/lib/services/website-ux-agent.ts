@@ -329,7 +329,7 @@ ${PROMPT_INJECTION_DEFENSE}
       destination: `Live Website Production (${generated.target_url})`,
       agent_id: 'website-agent',
       risk_level: 'high' as const,
-      requested_by: req.actor_email || 'admin@kriatech.com',
+      requested_by: req.actor_email || null,
     };
 
     const approvalRes = req.supabaseClient

@@ -282,7 +282,7 @@ ${PROMPT_INJECTION_DEFENSE}
           : 'KRIA TECH Storefront CMS',
       agent_id: 'content-agent',
       risk_level: 'medium' as const,
-      requested_by: req.actor_email || 'admin@kriatech.com',
+      requested_by: req.actor_email || null,
     };
 
     const approvalRes = req.supabaseClient

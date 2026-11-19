@@ -14,8 +14,8 @@ interface HeaderProps {
 export function Header({ title = 'Command Center', subtitle = 'KRIA TECH Growth & Operations' }: HeaderProps) {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<{ email: string; role: 'owner' | 'staff' }>({
-    email: 'admin@kriatech.com',
-    role: 'owner',
+    email: '',
+    role: 'staff',
   });
 
   const isSupabaseConfigured = Boolean(

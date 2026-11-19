@@ -136,7 +136,7 @@ export async function addLeadActivity(
       lead_id: leadId,
       activity_type: activity.activity_type,
       description: activity.description,
-      performed_by: activity.performed_by || 'admin@kriatech.com',
+      performed_by: activity.performed_by || null,
       created_at: new Date().toISOString(),
     };
 

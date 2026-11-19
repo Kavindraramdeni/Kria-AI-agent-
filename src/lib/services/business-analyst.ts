@@ -255,7 +255,7 @@ ${PROMPT_INJECTION_DEFENSE}
       destination: `KRIA TECH Operational Steering Committee`,
       agent_id: 'business-analyst',
       risk_level: 'medium' as const,
-      requested_by: req.actor_email || 'admin@kriatech.com',
+      requested_by: req.actor_email || null,
     };
 
     const approvalRes = req.supabaseClient

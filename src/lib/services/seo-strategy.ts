@@ -266,7 +266,7 @@ ${PROMPT_INJECTION_DEFENSE}
           destination: `KRIA Storefront Architecture (/seo & Target Pages)`,
           agent_id: 'seo-agent',
           risk_level: 'low',
-          requested_by: req.actor_email || 'admin@kriatech.com',
+          requested_by: req.actor_email || null,
         }, req.supabaseClient)
       : await createApprovalRequest({
           action_type: 'website_change',
@@ -284,7 +284,7 @@ ${PROMPT_INJECTION_DEFENSE}
           destination: `KRIA Storefront Architecture (/seo & Target Pages)`,
           agent_id: 'seo-agent',
           risk_level: 'low',
-          requested_by: req.actor_email || 'admin@kriatech.com',
+          requested_by: req.actor_email || null,
         });
 
     if (approvalRes.success && approvalRes.data) {
