@@ -58,9 +58,10 @@ To protect KRIA TECH's brand reputation, customer relationships, advertising cap
 - **Language**: TypeScript 5 (Strict Mode)
 - **AI Engine**: Official Google Gen AI SDK (`@google/genai`) — Gemini 3.5 Flash Lite (`gemini-3.5-flash-lite`)
 - **Styling**: Tailwind CSS (Dark Navy `#070B14`, Electric Blue `#2563EB`, Emerald Green `#10B981`)
-- **Database & Auth**: Supabase PostgreSQL + Auth (Server-side session verification via `@supabase/ssr`)
-- **Testing**: Vitest 5 (134+ tests across 22 test suites)
+- **Database & Auth**: Supabase PostgreSQL + Auth (Server-side session verification via `@supabase/ssr`, Realtime enabled)
+- **Testing**: Vitest 5 (158 tests across 24 test suites)
 - **Validation**: Zod structured data schemas
+- **CI/CD & Hosting**: GitHub Actions + Vercel Serverless Edge
 
 ---
 
@@ -129,7 +130,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 KRIA AI is built with zero-compromise testing standards:
 
 ```bash
-# Run Vitest test suite (All 22 test files, 134+ tests)
+# Run Vitest test suite (All 24 test files, 158 tests)
 npm test
 
 # Run TypeScript compiler verification (0 errors required)
@@ -138,9 +139,36 @@ npm run typecheck
 # Run Next.js ESLint verification (0 warnings/errors required)
 npm run lint
 
-# Run standalone live network scanner verification against public target
+# 1. Live SEO Strategy Agent Verification (Gemini AI + Supabase keywords persistence)
+npx tsx scripts/verify-seo-agent-live.ts
+
+# 2. Live Content Studio Agent Verification (Gemini AI + Supabase draft persistence)
+npx tsx scripts/verify-content-agent-live.ts
+
+# 3. Live Technical SEO Scanner Verification (DNS Pinning + DOM + Core Web Vitals)
 npx tsx scripts/verify-seo-scanner-live.ts
+
+# 4. Live Full Execution, Durable Idempotency & Hash Chain Audit
+npx tsx scripts/verify-full-approval-execution-live.ts
 ```
+
+---
+
+## 🚀 Vercel Production Deployment
+
+To deploy KRIA AI to Vercel:
+
+1. **Import Repository**: Connect `Kavindraramdeni/Kria-AI-agent-` in [Vercel](https://vercel.com).
+2. **Environment Variables**: Configure in Vercel Project Settings:
+   - `NEXT_PUBLIC_SUPABASE_URL` = `https://<project-id>.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `your-supabase-anon-key`
+   - `SUPABASE_SERVICE_ROLE_KEY` = `your-supabase-service-role-key`
+   - `GEMINI_API_KEY` = `your-google-gemini-api-key`
+   - `KRIA_ADMIN_EMAIL` = `admin@kriatech.com`
+   - `KRIA_ADMIN_PASSWORD` = `your-admin-password`
+   - `LIVE_PRODUCTION_DISPATCH` = `false` *(keep false for sandbox execution; toggle true for live provider dispatches)*
+3. **Region Selection**: Set Serverless Function Region to **Mumbai (`bom1`)** to match the Supabase `ap-south-1` region for minimal latency (<10ms).
+4. **Deploy**: Push to `main` triggers automated CI testing via GitHub Actions and continuous deployment on Vercel.
 
 ---
 
