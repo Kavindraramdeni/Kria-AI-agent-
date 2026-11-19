@@ -43,8 +43,39 @@ export async function logActivity(
 ): Promise<ActivityLog> {
   try {
     const createdAt = new Date().toISOString();
-    const latestExisting = DEMO_ACTIVITY_LOGS[0];
-    const prevHash = latestExisting?.hash || '0000000000000000000000000000000000000000000000000000000000000000';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const isLive = customClient || (supabaseUrl && !supabaseUrl.includes('placeholder'));
+    let prevHash = '0000000000000000000000000000000000000000000000000000000000000000';
+    let supabase: any = null;
+
+    if (isLive) {
+      try {
+        supabase = customClient || createClient();
+        const tableRef = supabase.from('activity_logs');
+        if (typeof tableRef?.select === 'function') {
+          const { data: latestDbRow } = await tableRef
+            .select('hash')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (latestDbRow?.hash) {
+            prevHash = latestDbRow.hash;
+          } else if (DEMO_ACTIVITY_LOGS[0]?.hash) {
+            prevHash = DEMO_ACTIVITY_LOGS[0].hash;
+          }
+        } else if (DEMO_ACTIVITY_LOGS[0]?.hash) {
+          prevHash = DEMO_ACTIVITY_LOGS[0].hash;
+        }
+      } catch (err) {
+        console.warn('Failed to fetch previous activity log hash from database:', err);
+        if (DEMO_ACTIVITY_LOGS[0]?.hash) {
+          prevHash = DEMO_ACTIVITY_LOGS[0].hash;
+        }
+      }
+    } else if (DEMO_ACTIVITY_LOGS[0]?.hash) {
+      prevHash = DEMO_ACTIVITY_LOGS[0].hash;
+    }
 
     const selfHash = computeLogHash({
       previous_hash: prevHash,
@@ -71,9 +102,7 @@ export async function logActivity(
 
     DEMO_ACTIVITY_LOGS.unshift(newLog);
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
-      const supabase = customClient || createClient();
+    if (isLive && supabase) {
       const { id, ...supabaseLog } = newLog;
       const { error } = await supabase.from('activity_logs').insert([supabaseLog]);
       if (error) console.warn('Supabase activity log error:', error.message);

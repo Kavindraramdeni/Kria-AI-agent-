@@ -263,6 +263,7 @@ ${PROMPT_INJECTION_DEFENSE}
       action_type: 'content_publish' as const,
       title: `Publish Review: ${generated.title}`,
       proposed_content: {
+        saved_content_id: savedContentId,
         sku: sku || 'UNSPECIFIED',
         product_name: productName || 'Unspecified Product',
         content_type: generated.content_type,

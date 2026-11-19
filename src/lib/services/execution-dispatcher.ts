@@ -4,6 +4,7 @@ import { ApprovalRequest } from '@/types/approval';
 import { UserRole } from '@/types/database';
 import { DEMO_USERS } from '@/lib/auth/session';
 import { logActivity } from '@/lib/services/activity-logs';
+import { dispatchExternalAction, SandboxExecutionResponse } from '@/lib/services/api-sandbox';
 
 export interface DispatchActor {
   email: string;
@@ -27,6 +28,8 @@ export interface DispatchResult {
     | 'CRITICAL_ACTION_RESTRICTED'
     | 'UNAUTHORIZED_ACTOR';
   dispatch_payload?: Record<string, any>;
+  external_dispatch?: SandboxExecutionResponse | Record<string, any>;
+  published_entity_id?: string;
 }
 
 // In-memory Mutex lock set to prevent concurrent TOCTOU race conditions
@@ -41,17 +44,41 @@ const idempotencyStore = new Map<string, DispatchResult>();
  * if their status is currently 'approved' and has not already been executed.
  * Protects against replayed requests, concurrent race conditions, and unauthorized critical actions.
  * Strictly verifies server-side roles ('owner' | 'admin'); never uses substring checks or default owner identities.
- * Supports idempotency keys for safe retries.
+ * Supports durable database-backed idempotency keys and actually executes external / publishing dispatches.
  */
 export async function executeApprovedAction(
   approvalId: string,
   actor?: DispatchActor | string,
   idempotencyKey?: string,
-  explicitRole?: UserRole
+  explicitRole?: UserRole,
+  customClient?: any
 ): Promise<DispatchResult> {
-  // 1. IDEMPOTENCY CHECK: If already executed with the same key, return identical receipt safely
-  if (idempotencyKey && idempotencyStore.has(idempotencyKey)) {
-    return idempotencyStore.get(idempotencyKey)!;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const isDemo = !customClient && (!supabaseUrl || supabaseUrl.includes('placeholder'));
+
+  // 1. DURABLE IDEMPOTENCY CHECK
+  if (idempotencyKey) {
+    if (idempotencyStore.has(idempotencyKey)) {
+      return idempotencyStore.get(idempotencyKey)!;
+    }
+
+    if (!isDemo) {
+      try {
+        const supabase = customClient || createClient();
+        const { data: existingRecord } = await supabase
+          .from('approval_requests')
+          .select('id, action_type, destination, executed_at, idempotency_key, execution_result')
+          .eq('idempotency_key', idempotencyKey)
+          .maybeSingle();
+
+        if (existingRecord?.execution_result) {
+          idempotencyStore.set(idempotencyKey, existingRecord.execution_result as DispatchResult);
+          return existingRecord.execution_result as DispatchResult;
+        }
+      } catch (err) {
+        console.warn('Idempotency database check note:', err);
+      }
+    }
   }
 
   // 2. CONCURRENCY LOCK CHECK: Prevent simultaneous duplicate requests
@@ -70,15 +97,13 @@ export async function executeApprovedAction(
   activeDispatchLocks.add(approvalId);
 
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const isDemo = !supabaseUrl || supabaseUrl.includes('placeholder');
-
     let item: ApprovalRequest | undefined;
+    let supabase: any = null;
 
     if (isDemo) {
       item = DEMO_APPROVALS.find((a) => a.id === approvalId);
     } else {
-      const supabase = createClient();
+      supabase = customClient || createClient();
       const { data, error } = await supabase
         .from('approval_requests')
         .select('*')
@@ -182,19 +207,19 @@ export async function executeApprovedAction(
 
     const executedAt = new Date().toISOString();
 
-    // 7. Update status to 'executed' atomically
+    // 7. Atomic Database Gate Lock
     if (isDemo) {
       item.status = 'executed';
       item.executed_at = executedAt;
       item.updated_at = executedAt;
     } else {
-      const supabase = createClient();
       const { data: updated, error: updateError } = await supabase
         .from('approval_requests')
         .update({
           status: 'executed',
           executed_at: executedAt,
           updated_at: executedAt,
+          idempotency_key: idempotencyKey || null,
         })
         .eq('id', approvalId)
         .eq('status', 'approved')
@@ -213,23 +238,87 @@ export async function executeApprovedAction(
       }
     }
 
-    // 8. Record audit log with cryptographic SHA-256 hash
-    await logActivity({
-      entity_type: 'approval_execution',
-      entity_id: approvalId,
-      action: 'action_dispatched',
-      description: `Dispatched approved ${item.action_type} to ${item.destination} by ${actorEmail} [role: ${actorRole}]`,
-      actor_type: 'user',
-      actor_id: actorEmail,
-      metadata: {
-        action_type: item.action_type,
+    // 8. EXECUTE REAL DOWNSTREAM ACTION (Publishing, Messaging, Campaigns, Storefront)
+    let externalDispatchResult: SandboxExecutionResponse | Record<string, any> | undefined;
+    let publishedEntityId: string | undefined;
+
+    try {
+      if (item.action_type === 'content_publish') {
+        const targetContentId = item.proposed_content?.saved_content_id;
+        if (targetContentId && !isDemo && supabase) {
+          await supabase
+            .from('content_items')
+            .update({
+              status: 'published',
+              updated_at: executedAt,
+            })
+            .eq('id', targetContentId);
+          publishedEntityId = targetContentId;
+        }
+
+        externalDispatchResult = await dispatchExternalAction({
+          channel: 'live_website',
+          destination: item.destination || 'KRIA TECH Storefront CMS / Social Feed',
+          payload: item.proposed_content,
+          approvalId,
+          actorEmail,
+        });
+      } else if (item.action_type === 'customer_message') {
+        const channel = item.destination?.toLowerCase().includes('email') ? 'email' : 'whatsapp';
+        externalDispatchResult = await dispatchExternalAction({
+          channel,
+          destination: item.destination || 'Customer WhatsApp Direct',
+          payload: item.proposed_content,
+          approvalId,
+          actorEmail,
+        });
+      } else if (item.action_type === 'campaign_launch') {
+        externalDispatchResult = await dispatchExternalAction({
+          channel: 'meta_ads',
+          destination: item.destination || 'Meta Ads Manager Account',
+          payload: item.proposed_content,
+          approvalId,
+          actorEmail,
+        });
+      } else if (item.action_type === 'website_change') {
+        const targetKeywordIds = item.proposed_content?.saved_keyword_ids;
+        if (Array.isArray(targetKeywordIds) && targetKeywordIds.length > 0 && !isDemo && supabase) {
+          await supabase
+            .from('seo_keywords')
+            .update({
+              status: 'ranking',
+              updated_at: executedAt,
+            })
+            .in('id', targetKeywordIds);
+        }
+
+        externalDispatchResult = await dispatchExternalAction({
+          channel: 'live_website',
+          destination: item.destination || 'KRIA Storefront Architecture (/seo & Target Pages)',
+          payload: item.proposed_content,
+          approvalId,
+          actorEmail,
+        });
+      } else if (item.action_type === 'automation_action') {
+        externalDispatchResult = await dispatchExternalAction({
+          channel: 'live_website',
+          destination: item.destination || 'Automation Webhook Endpoint',
+          payload: item.proposed_content,
+          approvalId,
+          actorEmail,
+        });
+      }
+    } catch (dispatchErr: any) {
+      console.warn('Action execution dispatch warning:', dispatchErr?.message || dispatchErr);
+      externalDispatchResult = {
+        success: false,
+        isSandbox: true,
+        channel: 'unknown',
         destination: item.destination,
-        risk_level: item.risk_level,
-        actor_role: actorRole,
-        executed_at: executedAt,
-        idempotency_key: idempotencyKey,
-      },
-    });
+        externalMessageId: `err-${Date.now()}`,
+        details: dispatchErr?.message || String(dispatchErr),
+      };
+    }
 
     const result: DispatchResult = {
       success: true,
@@ -239,7 +328,44 @@ export async function executeApprovedAction(
       executed_at: executedAt,
       idempotency_key: idempotencyKey,
       dispatch_payload: item.proposed_content,
+      external_dispatch: externalDispatchResult,
+      published_entity_id: publishedEntityId,
     };
+
+    // Store durable execution result in database
+    if (!isDemo && supabase) {
+      try {
+        await supabase
+          .from('approval_requests')
+          .update({ execution_result: result })
+          .eq('id', approvalId);
+      } catch (err) {
+        console.warn('Warning updating approval execution_result in database:', err);
+      }
+    }
+
+    // 9. Record audit log with cryptographic SHA-256 hash
+    await logActivity(
+      {
+        entity_type: 'approval_execution',
+        entity_id: approvalId,
+        action: 'action_dispatched',
+        description: `Dispatched approved ${item.action_type} to ${item.destination} by ${actorEmail} [role: ${actorRole}]`,
+        actor_type: 'user',
+        actor_id: actorEmail,
+        metadata: {
+          action_type: item.action_type,
+          destination: item.destination,
+          risk_level: item.risk_level,
+          actor_role: actorRole,
+          executed_at: executedAt,
+          idempotency_key: idempotencyKey,
+          external_dispatch: externalDispatchResult,
+          published_entity_id: publishedEntityId,
+        },
+      },
+      supabase
+    );
 
     // Store in idempotency cache
     if (idempotencyKey) {

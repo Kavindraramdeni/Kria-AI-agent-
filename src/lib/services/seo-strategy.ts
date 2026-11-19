@@ -254,6 +254,7 @@ ${PROMPT_INJECTION_DEFENSE}
           action_type: 'website_change',
           title: `SEO On-Page & Keyword Strategy: ${generated.target_cluster}`,
           proposed_content: {
+            saved_keyword_ids: savedKeywordIds,
             target_cluster: generated.target_cluster,
             recommended_keywords: generated.recommended_keywords,
             on_page_recommendations: generated.on_page_recommendations,
@@ -271,6 +272,7 @@ ${PROMPT_INJECTION_DEFENSE}
           action_type: 'website_change',
           title: `SEO On-Page & Keyword Strategy: ${generated.target_cluster}`,
           proposed_content: {
+            saved_keyword_ids: savedKeywordIds,
             target_cluster: generated.target_cluster,
             recommended_keywords: generated.recommended_keywords,
             on_page_recommendations: generated.on_page_recommendations,

@@ -115,13 +115,15 @@ export async function updateApprovalStatus(
   id: string,
   status: ApprovalStatus,
   reviewerEmail: string,
-  reviewNotes?: string
+  reviewNotes?: string,
+  customClient?: any
 ): Promise<{ success: boolean; error?: string; recheckConfirmed?: boolean }> {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const isDemo = !customClient && (!supabaseUrl || supabaseUrl.includes('placeholder'));
     const now = new Date().toISOString();
 
-    if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
+    if (isDemo) {
       const item = DEMO_APPROVALS.find((a) => a.id === id);
       if (!item) return { success: false, error: 'Approval request not found.' };
 
@@ -135,21 +137,57 @@ export async function updateApprovalStatus(
       return { success: true, recheckConfirmed: true };
     }
 
-    const supabase = createClient();
+    const supabase = customClient || createClient();
+
+    // Resolve reviewer UUID
+    let reviewerId: string | null = null;
+    const isUuid = (val: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val);
+
+    if (reviewerEmail && isUuid(reviewerEmail)) {
+      reviewerId = reviewerEmail;
+    } else {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user?.id && isUuid(authData.user.id)) {
+          reviewerId = authData.user.id;
+        } else if (reviewerEmail && reviewerEmail.includes('@')) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('email', reviewerEmail.trim())
+            .single();
+          if (prof?.id && isUuid(prof.id)) {
+            reviewerId = prof.id;
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
     const updatePayload: Record<string, any> = {
       status,
       reviewed_at: now,
       updated_at: now,
     };
+    if (reviewerId) updatePayload.reviewed_by = reviewerId;
     if (reviewNotes) updatePayload.review_notes = reviewNotes;
     if (status === 'executed') updatePayload.executed_at = now;
 
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('approval_requests')
       .update(updatePayload)
-      .eq('id', id);
+      .eq('id', id)
+      .select();
 
     if (error) return { success: false, error: error.message };
+    if (!updated || updated.length === 0) {
+      return {
+        success: false,
+        error: 'Failed to update approval status: 0 rows modified. Check RLS owner/admin permissions.',
+      };
+    }
     return { success: true, recheckConfirmed: true };
   } catch (err: any) {
     return { success: false, error: err.message };
