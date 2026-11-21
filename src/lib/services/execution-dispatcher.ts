@@ -446,6 +446,7 @@ export async function retryFailedApproval(
       .from('approval_requests')
       .update({
         status: 'approved',
+        executed_at: null,
         dispatch_error: null,
         updated_at: new Date().toISOString(),
       })
@@ -456,6 +457,7 @@ export async function retryFailedApproval(
     if (demoItem && demoItem.status === 'failed') {
       demoItem.status = 'approved';
       (demoItem as any).dispatch_error = null;
+      demoItem.executed_at = null;
     }
   }
   return executeApprovedAction(approvalId, actor, undefined, undefined, customClient);
