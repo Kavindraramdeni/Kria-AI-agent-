@@ -38,7 +38,14 @@ jobs:
         run: npm run lint
 
       - name: Run Vitest Suite
-        run: npx vitest run --reporter=verbose
+        run: |
+          npx vitest run --reporter=verbose 2>&1 | tee vitest.log || {
+            echo "### Vitest Failure Log" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 100 vitest.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
 
       - name: Run Production Build
         run: npm run build
