@@ -26,7 +26,9 @@ export interface DispatchResult {
     | 'NOT_FOUND'
     | 'DATABASE_ERROR'
     | 'CRITICAL_ACTION_RESTRICTED'
-    | 'UNAUTHORIZED_ACTOR';
+    | 'UNAUTHORIZED_ACTOR'
+    | 'EXTERNAL_DISPATCH_FAILED'
+    | 'LIVE_DISPATCH_BLOCKED';
   dispatch_payload?: Record<string, any>;
   external_dispatch?: SandboxExecutionResponse | Record<string, any>;
   published_entity_id?: string;
@@ -312,7 +314,7 @@ export async function executeApprovedAction(
       console.warn('Action execution dispatch warning:', dispatchErr?.message || dispatchErr);
       externalDispatchResult = {
         success: false,
-        isSandbox: true,
+        isSandbox: false,
         channel: 'unknown',
         destination: item.destination,
         externalMessageId: `err-${Date.now()}`,
@@ -320,8 +322,10 @@ export async function executeApprovedAction(
       };
     }
 
+    const isDispatchSuccess = externalDispatchResult ? externalDispatchResult.success : true;
+
     const result: DispatchResult = {
-      success: true,
+      success: isDispatchSuccess,
       approval_id: approvalId,
       action_type: item.action_type,
       destination: item.destination,
@@ -330,6 +334,12 @@ export async function executeApprovedAction(
       dispatch_payload: item.proposed_content,
       external_dispatch: externalDispatchResult,
       published_entity_id: publishedEntityId,
+      ...(!isDispatchSuccess
+        ? {
+            error_code: 'EXTERNAL_DISPATCH_FAILED',
+            error: externalDispatchResult?.details || 'External dispatch failed',
+          }
+        : {}),
     };
 
     // Store durable execution result in database

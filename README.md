@@ -166,7 +166,7 @@ To deploy KRIA AI to Vercel:
    - `GEMINI_API_KEY` = `your-google-gemini-api-key`
    - `KRIA_ADMIN_EMAIL` = `admin@kriatech.com`
    - `KRIA_ADMIN_PASSWORD` = `your-admin-password`
-   - `LIVE_PRODUCTION_DISPATCH` = `false` *(keep false for sandbox execution; toggle true for live provider dispatches)*
+   - `LIVE_PRODUCTION_DISPATCH` = `false` *(MANDATORY: Keep false. Real provider adapters for WhatsApp, Meta Ads, and email do not exist yet; setting true is explicitly blocked)*
 3. **Region Selection**: Set Serverless Function Region to **Mumbai (`bom1`)** to match the Supabase `ap-south-1` region for minimal latency (<10ms).
 4. **Deploy**: Push to `main` triggers automated CI testing via GitHub Actions and continuous deployment on Vercel.
 
