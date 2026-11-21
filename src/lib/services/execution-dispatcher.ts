@@ -451,6 +451,12 @@ export async function retryFailedApproval(
       })
       .eq('id', approvalId)
       .eq('status', 'failed');
+  } else {
+    const demoItem = DEMO_APPROVALS.find((a) => a.id === approvalId);
+    if (demoItem && demoItem.status === 'failed') {
+      demoItem.status = 'approved';
+      (demoItem as any).dispatch_error = null;
+    }
   }
   return executeApprovedAction(approvalId, actor, undefined, undefined, customClient);
 }
