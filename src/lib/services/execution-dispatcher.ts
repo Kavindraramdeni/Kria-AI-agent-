@@ -1,4 +1,6 @@
-import { createClient } from '@/lib/supabase/client';
+// NOTE: Do NOT import createBrowserClient here. This module runs server-side
+// (API routes). The caller must pass a server-side Supabase client via customClient.
+// If no client is passed, demo/test mode is assumed (no DB calls).
 import { DEMO_APPROVALS } from '@/lib/demo-data';
 import { ApprovalRequest } from '@/types/approval';
 import { UserRole } from '@/types/database';
@@ -56,6 +58,8 @@ export async function executeApprovedAction(
   customClient?: any
 ): Promise<DispatchResult> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Demo/test mode: no live DB. customClient must be provided for real DB operations.
+  // Server API routes MUST pass a server-side Supabase client (createServerClient) as customClient.
   const isDemo = !customClient && (!supabaseUrl || supabaseUrl.includes('placeholder'));
 
   // 1. DURABLE IDEMPOTENCY CHECK
@@ -66,7 +70,8 @@ export async function executeApprovedAction(
 
     if (!isDemo) {
       try {
-        const supabase = customClient || createClient();
+        const supabase = customClient;
+        if (!supabase) throw new Error('No server client provided for idempotency check');
         const { data: existingRecord } = await supabase
           .from('approval_requests')
           .select('id, action_type, destination, executed_at, idempotency_key, execution_result')
@@ -105,7 +110,17 @@ export async function executeApprovedAction(
     if (isDemo) {
       item = DEMO_APPROVALS.find((a) => a.id === approvalId);
     } else {
-      supabase = customClient || createClient();
+      supabase = customClient;
+      if (!supabase) {
+        return {
+          success: false,
+          approval_id: approvalId,
+          action_type: 'unknown',
+          destination: 'unknown',
+          error_code: 'DATABASE_ERROR',
+          error: 'No server-side Supabase client provided. Pass a server client to executeApprovedAction.',
+        };
+      }
       const { data, error } = await supabase
         .from('approval_requests')
         .select('*')
@@ -137,7 +152,13 @@ export async function executeApprovedAction(
     }
 
     // 3. RE-CHECK GATE 1: Single-use check (Prevent double-execution / replay)
-    if (item.executed_at || item.status === 'executed') {
+    // Also guard against 'processing', 'succeeded', 'failed' (new state machine states)
+    if (
+      item.executed_at ||
+      item.status === 'executed' ||
+      item.status === 'succeeded' ||
+      item.status === 'processing'
+    ) {
       return {
         success: false,
         approval_id: approvalId,
@@ -148,8 +169,8 @@ export async function executeApprovedAction(
       };
     }
 
-    // 4. RE-CHECK GATE 2: Must be explicitly approved
-    if (item.status !== 'approved') {
+    // 4. RE-CHECK GATE 2: Must be explicitly approved (or failed — allow retry of failed)
+    if (item.status !== 'approved' && item.status !== 'failed') {
       return {
         success: false,
         approval_id: approvalId,
@@ -207,24 +228,25 @@ export async function executeApprovedAction(
       }
     }
 
-    const executedAt = new Date().toISOString();
+    const dispatchStartedAt = new Date().toISOString();
 
-    // 7. Atomic Database Gate Lock
+    // 7. Atomic Database Gate Lock — transition to 'processing' BEFORE dispatch
+    // This prevents concurrent duplicate execution and establishes a recoverable state.
+    // The external action will be executed AFTER this transition; if it fails,
+    // status is updated to 'failed' and dispatch_error is recorded.
     if (isDemo) {
-      item.status = 'executed';
-      item.executed_at = executedAt;
-      item.updated_at = executedAt;
+      item.status = 'processing';
     } else {
       const { data: updated, error: updateError } = await supabase
         .from('approval_requests')
         .update({
-          status: 'executed',
-          executed_at: executedAt,
-          updated_at: executedAt,
+          status: 'processing',
+          dispatch_started_at: dispatchStartedAt,
+          updated_at: dispatchStartedAt,
           idempotency_key: idempotencyKey || null,
         })
         .eq('id', approvalId)
-        .eq('status', 'approved')
+        .in('status', ['approved', 'failed'])   // allow retry of previously-failed
         .is('executed_at', null)
         .select();
 
@@ -235,14 +257,19 @@ export async function executeApprovedAction(
           action_type: item.action_type,
           destination: item.destination,
           error_code: 'ALREADY_EXECUTED',
-          error: 'SECURITY GATE REJECTION: Database atomic update failed. Item was already executed by a concurrent request.',
+          error: 'SECURITY GATE REJECTION: Database atomic update failed. Item was claimed by a concurrent request.',
         };
       }
     }
 
     // 8. EXECUTE REAL DOWNSTREAM ACTION (Publishing, Messaging, Campaigns, Storefront)
+    // IMPORTANT: Dispatch happens AFTER transition to 'processing'.
+    // On success → status becomes 'succeeded'; on failure → 'failed' (recoverable).
+    // The approval is NEVER permanently marked without confirmed outcome.
     let externalDispatchResult: SandboxExecutionResponse | Record<string, any> | undefined;
     let publishedEntityId: string | undefined;
+    let dispatchError: string | undefined;
+    const executedAt = new Date().toISOString();
 
     try {
       if (item.action_type === 'content_publish') {
@@ -312,17 +339,20 @@ export async function executeApprovedAction(
       }
     } catch (dispatchErr: any) {
       console.warn('Action execution dispatch warning:', dispatchErr?.message || dispatchErr);
+      dispatchError = dispatchErr?.message || String(dispatchErr);
       externalDispatchResult = {
         success: false,
         isSandbox: false,
         channel: 'unknown',
         destination: item.destination,
         externalMessageId: `err-${Date.now()}`,
-        details: dispatchErr?.message || String(dispatchErr),
+        details: dispatchError,
       };
     }
 
-    const isDispatchSuccess = externalDispatchResult ? externalDispatchResult.success : true;
+    const isDispatchSuccess = externalDispatchResult
+      ? externalDispatchResult.success !== false
+      : true; // no dispatch needed for this action type
 
     const result: DispatchResult = {
       success: isDispatchSuccess,
@@ -337,30 +367,41 @@ export async function executeApprovedAction(
       ...(!isDispatchSuccess
         ? {
             error_code: 'EXTERNAL_DISPATCH_FAILED',
-            error: externalDispatchResult?.details || 'External dispatch failed',
+            error: dispatchError || externalDispatchResult?.details || 'External dispatch failed',
           }
         : {}),
     };
 
-    // Store durable execution result in database
+    // 9. Update approval status to 'succeeded' or 'failed' — AFTER confirmed outcome.
+    //    Never report success before this transition is recorded.
     if (!isDemo && supabase) {
       try {
+        const finalStatus = isDispatchSuccess ? 'succeeded' : 'failed';
         await supabase
           .from('approval_requests')
-          .update({ execution_result: result })
+          .update({
+            status: finalStatus,
+            executed_at: isDispatchSuccess ? executedAt : null,
+            updated_at: executedAt,
+            execution_result: result,
+            dispatch_error: dispatchError || null,
+          })
           .eq('id', approvalId);
       } catch (err) {
-        console.warn('Warning updating approval execution_result in database:', err);
+        console.warn('Warning updating approval final status in database:', err);
       }
+    } else if (isDemo) {
+      item.status = isDispatchSuccess ? 'succeeded' : 'failed';
+      item.executed_at = isDispatchSuccess ? executedAt : null;
     }
 
-    // 9. Record audit log with cryptographic SHA-256 hash
+    // 10. Record audit log with cryptographic SHA-256 hash
     await logActivity(
       {
         entity_type: 'approval_execution',
         entity_id: approvalId,
-        action: 'action_dispatched',
-        description: `Dispatched approved ${item.action_type} to ${item.destination} by ${actorEmail} [role: ${actorRole}]`,
+        action: isDispatchSuccess ? 'action_dispatched' : 'action_dispatch_failed',
+        description: `${isDispatchSuccess ? 'Dispatched' : 'Failed to dispatch'} approved ${item.action_type} to ${item.destination} by ${actorEmail} [role: ${actorRole}]`,
         actor_type: 'user',
         actor_id: actorEmail,
         metadata: {
@@ -372,12 +413,13 @@ export async function executeApprovedAction(
           idempotency_key: idempotencyKey,
           external_dispatch: externalDispatchResult,
           published_entity_id: publishedEntityId,
+          dispatch_error: dispatchError,
         },
       },
       supabase
     );
 
-    // Store in idempotency cache
+    // Store in idempotency cache (store both successes and failures for replay)
     if (idempotencyKey) {
       idempotencyStore.set(idempotencyKey, result);
     }
@@ -387,4 +429,68 @@ export async function executeApprovedAction(
     // Release concurrency lock
     activeDispatchLocks.delete(approvalId);
   }
+}
+
+/**
+ * Retries a failed approval execution.
+ * Only approvals in 'failed' status can be retried.
+ */
+export async function retryFailedApproval(
+  approvalId: string,
+  actor: DispatchActor | string,
+  customClient?: any
+): Promise<DispatchResult> {
+  const supabase = customClient;
+  if (supabase) {
+    await supabase
+      .from('approval_requests')
+      .update({
+        status: 'approved',
+        dispatch_error: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', approvalId)
+      .eq('status', 'failed');
+  }
+  return executeApprovedAction(approvalId, actor, undefined, undefined, customClient);
+}
+
+/**
+ * Reconciliation mechanism:
+ * Recovers approvals stuck in 'processing' status due to unexpected server crashes or timeouts.
+ * If dispatch_started_at is older than timeoutMinutes, transitions back to 'failed' with timeout notice.
+ */
+export async function reconcileStaleApprovals(
+  timeoutMinutes = 10,
+  customClient?: any
+): Promise<{ recoveredCount: number; approvalIds: string[] }> {
+  const supabase = customClient;
+  if (!supabase) {
+    return { recoveredCount: 0, approvalIds: [] };
+  }
+
+  const cutoff = new Date(Date.now() - timeoutMinutes * 60 * 1000).toISOString();
+
+  const { data: staleRecords, error } = await supabase
+    .from('approval_requests')
+    .select('id, title, action_type')
+    .eq('status', 'processing')
+    .lt('dispatch_started_at', cutoff);
+
+  if (error || !staleRecords || staleRecords.length === 0) {
+    return { recoveredCount: 0, approvalIds: [] };
+  }
+
+  const ids = staleRecords.map((r: any) => r.id);
+
+  await supabase
+    .from('approval_requests')
+    .update({
+      status: 'failed',
+      dispatch_error: `RECONCILIATION_TIMEOUT: Execution timed out after ${timeoutMinutes} minutes without completion. Safe to retry.`,
+      updated_at: new Date().toISOString(),
+    })
+    .in('id', ids);
+
+  return { recoveredCount: ids.length, approvalIds: ids };
 }

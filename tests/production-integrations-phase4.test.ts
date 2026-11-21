@@ -87,7 +87,7 @@ describe('Phase 4 — Production Integrations: Rate Limiting, Webhooks & Sandbox
       expect(result.details).toContain('LIVE_PRODUCTION_DISPATCH remains false');
     });
 
-    it('strictly blocks live dispatch when LIVE_PRODUCTION_DISPATCH=true because real provider adapters do not exist', async () => {
+    it('strictly fails live dispatch when LIVE_PRODUCTION_DISPATCH=true without valid provider credentials', async () => {
       const originalEnv = process.env.LIVE_PRODUCTION_DISPATCH;
       process.env.LIVE_PRODUCTION_DISPATCH = 'true';
 
@@ -100,7 +100,7 @@ describe('Phase 4 — Production Integrations: Rate Limiting, Webhooks & Sandbox
             approvalId: 'app-test-blocked-live',
             actorEmail: 'admin@kriatech.com',
           })
-        ).rejects.toThrow(/LIVE_DISPATCH_BLOCKED/);
+        ).rejects.toThrow(/LIVE_DISPATCH_FAILED|WHATSAPP_CONFIG_MISSING/);
       } finally {
         if (originalEnv !== undefined) {
           process.env.LIVE_PRODUCTION_DISPATCH = originalEnv;
@@ -110,7 +110,7 @@ describe('Phase 4 — Production Integrations: Rate Limiting, Webhooks & Sandbox
       }
     });
 
-    it('never emits a fake live receipt when LIVE_PRODUCTION_DISPATCH is turned on without provider adapters', async () => {
+    it('never emits a fake live receipt when LIVE_PRODUCTION_DISPATCH is turned on without provider credentials', async () => {
       const originalEnv = process.env.LIVE_PRODUCTION_DISPATCH;
       process.env.LIVE_PRODUCTION_DISPATCH = 'true';
 
@@ -126,8 +126,7 @@ describe('Phase 4 — Production Integrations: Rate Limiting, Webhooks & Sandbox
           });
         } catch (err: any) {
           threw = true;
-          expect(err.message).toContain('LIVE_DISPATCH_BLOCKED');
-          expect(err.message).toContain('Real provider adapters');
+          expect(err.message).toContain('LIVE_DISPATCH_FAILED');
         }
         expect(threw).toBe(true);
       } finally {
@@ -139,7 +138,7 @@ describe('Phase 4 — Production Integrations: Rate Limiting, Webhooks & Sandbox
       }
     });
 
-    it('dispatcher catches LIVE_DISPATCH_BLOCKED and reports failure rather than false success', async () => {
+    it('dispatcher catches LIVE_DISPATCH_FAILED and reports failure rather than false success', async () => {
       const originalEnv = process.env.LIVE_PRODUCTION_DISPATCH;
       process.env.LIVE_PRODUCTION_DISPATCH = 'true';
 
@@ -160,7 +159,7 @@ describe('Phase 4 — Production Integrations: Rate Limiting, Webhooks & Sandbox
 
         expect(result.success).toBe(false);
         expect(result.error_code).toBe('EXTERNAL_DISPATCH_FAILED');
-        expect(result.error).toContain('LIVE_DISPATCH_BLOCKED');
+        expect(result.error).toContain('LIVE_DISPATCH_FAILED');
         expect(result.external_dispatch?.isSandbox).toBe(false);
       } finally {
         if (originalEnv !== undefined) {

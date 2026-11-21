@@ -12,6 +12,9 @@ export type ApprovalStatus =
   | 'approved'
   | 'rejected'
   | 'revision_requested'
+  | 'processing'
+  | 'succeeded'
+  | 'failed'
   | 'executed';
 
 export interface ApprovalRequest {
@@ -28,6 +31,10 @@ export interface ApprovalRequest {
   reviewed_at: string | null;
   review_notes: string | null;
   executed_at: string | null;
+  idempotency_key?: string | null;
+  execution_result?: Record<string, any> | null;
+  dispatch_error?: string | null;
+  dispatch_started_at?: string | null;
   created_at: string;
   updated_at: string;
 }

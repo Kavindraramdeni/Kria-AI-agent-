@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { executeApprovedAction } from '@/lib/services/execution-dispatcher';
 import { checkRateLimit } from '@/lib/services/rate-limit';
 import { getServerSession } from '@/lib/auth/session';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 
 /**
  * POST /api/approvals/[id]/dispatch
@@ -41,8 +42,9 @@ export async function POST(
       );
     }
 
-    // 1. Verify server-side authentication
-    const session = await getServerSession();
+    // 1. Verify server-side authentication using server-side Supabase client
+    const serverSupabase = createServerClient(req.cookies);
+    const session = await getServerSession(serverSupabase);
     if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized: Authentication required to dispatch approval actions.' },
@@ -78,7 +80,7 @@ export async function POST(
     }
 
     const idempotencyKey = headerIdempotencyKey || bodyIdempotencyKey;
-    const result = await executeApprovedAction(approvalId, actor, idempotencyKey);
+    const result = await executeApprovedAction(approvalId, actor, idempotencyKey, undefined, serverSupabase);
 
     if (!result.success) {
       if (result.error_code === 'CRITICAL_ACTION_RESTRICTED') {
