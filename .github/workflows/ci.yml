@@ -48,4 +48,11 @@ jobs:
           }
 
       - name: Run Production Build
-        run: npm run build
+        run: |
+          npm run build 2>&1 | tee build.log || {
+            echo "### Next.js Production Build Failure Log" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 120 build.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
