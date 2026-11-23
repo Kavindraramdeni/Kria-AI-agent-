@@ -1546,12 +1546,14 @@ ${issues.slice(0, 5).map((i) => `* [${i.severity.toUpperCase()}] ${i.issue}: ${i
     console.warn('AI remediation generation warning (non-fatal):', aiErr);
   }
 
-  // 9. Persist in Supabase seo_audits Table
+  // 9. Persist in Supabase seo_audits Table (if live or mock client/actor provided)
   let savedAuditId: string | undefined;
   let persistenceError: string | undefined;
-  try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (process.env.NODE_ENV === 'test' || (supabaseUrl && !supabaseUrl.includes('placeholder'))) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const shouldPersist = !!options.supabaseClient || !!options.actorEmail || (!options.mockHtml && !!supabaseUrl && !supabaseUrl.includes('placeholder'));
+
+  if (shouldPersist) {
+    try {
       let supabase: any = options.supabaseClient;
       if (!supabase) {
         try {
@@ -1582,67 +1584,69 @@ ${issues.slice(0, 5).map((i) => `* [${i.severity.toUpperCase()}] ${i.issue}: ${i
       } else if (data) {
         savedAuditId = data.id;
       }
+    } catch (persistErr: any) {
+      persistenceError = persistErr?.message || String(persistErr);
+      console.warn('Supabase persistence warning:', persistErr);
     }
-  } catch (persistErr: any) {
-    persistenceError = persistErr?.message || String(persistErr);
-    console.warn('Supabase persistence warning:', persistErr);
   }
 
   // 10. Submit Proposed Optimizations to Human Approval Queue
   let approvalId: string | undefined;
   let approvalError: string | undefined;
-  try {
-    const approvalPayload = {
-      action_type: 'website_change' as const,
-      title: `Technical SEO & Core Web Vitals Remediation: ${finalUrl} (${overallScore}/100)`,
-      proposed_content: {
-        target_url: finalUrl,
-        overall_score: overallScore,
-        scores: {
-          seoHealth: seoHealthScore,
-          performance: performanceScore,
-          mobileUx: mobileUxScore,
-          structuredData: structuredDataScore,
+  if (shouldPersist) {
+    try {
+      const approvalPayload = {
+        action_type: 'website_change' as const,
+        title: `Technical SEO & Core Web Vitals Remediation: ${finalUrl} (${overallScore}/100)`,
+        proposed_content: {
+          target_url: finalUrl,
+          overall_score: overallScore,
+          scores: {
+            seoHealth: seoHealthScore,
+            performance: performanceScore,
+            mobileUx: mobileUxScore,
+            structuredData: structuredDataScore,
+          },
+          critical_issues: issues.filter((i) => i.severity === 'critical' || i.severity === 'high'),
+          ai_priorities: aiRemediation ? aiRemediation.topPriorities : [],
         },
-        critical_issues: issues.filter((i) => i.severity === 'critical' || i.severity === 'high'),
-        ai_priorities: aiRemediation ? aiRemediation.topPriorities : [],
-      },
-      destination: `Live Website Production (${finalUrl})`,
-      agent_id: 'website-agent',
-      risk_level: 'high' as const,
-      requested_by: options.actorEmail || null,
-    };
+        destination: `Live Website Production (${finalUrl})`,
+        agent_id: 'website-agent',
+        risk_level: 'high' as const,
+        requested_by: options.actorEmail || null,
+      };
 
-    const approvalRes = options.supabaseClient
-      ? await createApprovalRequest(approvalPayload, options.supabaseClient)
-      : await createApprovalRequest(approvalPayload);
+      const approvalRes = options.supabaseClient
+        ? await createApprovalRequest(approvalPayload, options.supabaseClient)
+        : await createApprovalRequest(approvalPayload);
 
-    if (approvalRes.success && approvalRes.data) {
-      approvalId = approvalRes.data.id;
-    } else if (approvalRes.error) {
-      approvalError = approvalRes.error;
+      if (approvalRes.success && approvalRes.data) {
+        approvalId = approvalRes.data.id;
+      } else if (approvalRes.error) {
+        approvalError = approvalRes.error;
+      }
+    } catch (approvalErr: any) {
+      approvalError = approvalErr?.message || String(approvalErr);
+      console.warn('Approval request warning:', approvalErr);
     }
-  } catch (approvalErr: any) {
-    approvalError = approvalErr?.message || String(approvalErr);
-    console.warn('Approval request warning:', approvalErr);
-  }
 
-  // 11. Activity Log
-  await logActivity({
-    entity_type: 'seo_audit',
-    entity_id: savedAuditId || finalUrl,
-    action: 'seo_scanner_completed',
-    description: `Real website SEO scanner audited '${finalUrl}' (Overall: ${overallScore}/100, Perf: ${performanceScore}/100, Latency: ${network.requestResponseStartMs}ms, ${issues.length} issues)`,
-    actor_type: 'agent',
-    actor_id: 'website-agent',
-    metadata: {
-      url: finalUrl,
-      overall_score: overallScore,
-      request_response_start_ms: network.requestResponseStartMs,
-      issues_count: issues.length,
-      approval_id: approvalId,
-    },
-  });
+    // 11. Activity Log
+    await logActivity({
+      entity_type: 'seo_audit',
+      entity_id: savedAuditId || finalUrl,
+      action: 'seo_scanner_completed',
+      description: `Real website SEO scanner audited '${finalUrl}' (Overall: ${overallScore}/100, Perf: ${performanceScore}/100, Latency: ${network.requestResponseStartMs}ms, ${issues.length} issues)`,
+      actor_type: 'agent',
+      actor_id: 'website-agent',
+      metadata: {
+        url: finalUrl,
+        overall_score: overallScore,
+        request_response_start_ms: network.requestResponseStartMs,
+        issues_count: issues.length,
+        approval_id: approvalId,
+      },
+    });
+  }
 
   return {
     url: finalUrl,
