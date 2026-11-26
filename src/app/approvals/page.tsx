@@ -10,8 +10,170 @@ import {
   ShieldCheck,
   CheckCircle,
   Lock,
-  Zap
+  Zap,
+  MessageSquare,
+  ChevronDown,
+  ChevronUp,
+  Globe,
+  FileText
 } from 'lucide-react';
+
+function ProposedContentPreview({ content, actionType }: { content: any; actionType: string }) {
+  const [showRaw, setShowRaw] = useState(false);
+
+  if (!content || typeof content !== 'object') {
+    return (
+      <div className="p-3 rounded-lg bg-kria-surface border border-kria-border/70 text-xs text-slate-300">
+        {String(content)}
+      </div>
+    );
+  }
+
+  // 1. Customer Message / Sales Quote
+  if (actionType === 'customer_message' || content.draft_response_message) {
+    return (
+      <div className="space-y-3">
+        {/* Key Commercial Summary Bar */}
+        <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-kria-900 border border-kria-border text-xs">
+          {content.lead_name && (
+            <div className="flex items-center gap-1.5 text-slate-200">
+              <span className="text-slate-400">Buyer:</span>
+              <strong className="text-white font-semibold">{content.lead_name}</strong>
+              {content.business_name && (
+                <span className="text-slate-400 text-[11px]">({content.business_name})</span>
+              )}
+            </div>
+          )}
+          {content.quantity && (
+            <div className="flex items-center gap-1 text-slate-300 sm:border-l sm:border-kria-border sm:pl-3">
+              <span className="text-slate-400">Order:</span>
+              <strong className="text-electric-light font-semibold">{content.quantity} pcs</strong>
+              {content.product_name && (
+                <span className="text-slate-400 text-[11px] truncate max-w-[200px]">
+                  ({content.product_name})
+                </span>
+              )}
+            </div>
+          )}
+          {content.total_inr && (
+            <div className="flex items-center gap-1 text-slate-300 sm:border-l sm:border-kria-border sm:pl-3">
+              <span className="text-slate-400">Quote Total:</span>
+              <strong className="text-emerald-400 font-bold text-sm">
+                ₹{Number(content.total_inr).toLocaleString()}
+              </strong>
+              {content.unit_price_inr && (
+                <span className="text-[11px] text-slate-400">(@ ₹{content.unit_price_inr}/pc)</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* WhatsApp Message Preview Bubble */}
+        <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-400">
+            <span className="flex items-center gap-1.5">
+              <MessageSquare className="h-3.5 w-3.5" />
+              Proposed Message for Customer (WhatsApp / Email):
+            </span>
+            <span className="text-[10px] text-emerald-400/80 px-2 py-0.5 rounded bg-emerald-500/10 font-mono">
+              Ready to Dispatch
+            </span>
+          </div>
+          <div className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed font-sans bg-kria-900/80 p-3 rounded-lg border border-emerald-500/20">
+            {content.draft_response_message || content.message || content.text || 'No message draft provided.'}
+          </div>
+        </div>
+
+        {/* Collapsible Technical Details */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => setShowRaw(!showRaw)}
+            className="text-[11px] text-slate-400 hover:text-slate-200 flex items-center gap-1 transition-colors"
+          >
+            {showRaw ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {showRaw ? 'Hide Technical Metadata' : 'View Full Technical Payload'}
+          </button>
+          {showRaw && (
+            <div className="mt-2 p-3 rounded-lg bg-kria-950 border border-kria-border text-[11px] font-mono text-slate-400 max-h-48 overflow-auto">
+              <pre className="whitespace-pre-wrap">{JSON.stringify(content, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Website Change / Technical SEO Remediation
+  if (actionType === 'website_change' || content.critical_issues || content.on_page_recommendations) {
+    const priorities = content.ai_priorities || [];
+
+    return (
+      <div className="space-y-3">
+        {content.target_url && (
+          <div className="flex items-center justify-between p-2.5 rounded-lg bg-kria-900 border border-kria-border text-xs">
+            <div className="flex items-center gap-1.5 text-slate-300">
+              <Globe className="h-3.5 w-3.5 text-electric-light" />
+              <span className="text-slate-400">Target URL:</span>
+              <span className="text-white font-mono underline">{content.target_url}</span>
+            </div>
+            {content.overall_score && (
+              <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold text-[11px]">
+                Health Score: {content.overall_score}/100
+              </span>
+            )}
+          </div>
+        )}
+
+        {priorities.length > 0 && (
+          <div className="p-3 rounded-xl bg-kria-900 border border-kria-border space-y-1.5">
+            <p className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">
+              Top Optimization Directives:
+            </p>
+            <ul className="list-disc list-inside text-xs text-slate-200 space-y-1">
+              {priorities.slice(0, 3).map((item: string, i: number) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => setShowRaw(!showRaw)}
+            className="text-[11px] text-slate-400 hover:text-slate-200 flex items-center gap-1 transition-colors"
+          >
+            {showRaw ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {showRaw ? 'Hide Technical Details' : 'View Full Issue List & JSON'}
+          </button>
+          {showRaw && (
+            <div className="mt-2 p-3 rounded-lg bg-kria-950 border border-kria-border text-[11px] font-mono text-slate-400 max-h-48 overflow-auto">
+              <pre className="whitespace-pre-wrap">{JSON.stringify(content, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Fallback Clean View for Content & Other
+  return (
+    <div className="space-y-2">
+      {content.title && <h4 className="text-xs font-bold text-white">{content.title}</h4>}
+      {content.body && (
+        <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed p-3 rounded-lg bg-kria-surface border border-kria-border/70">
+          {content.body}
+        </p>
+      )}
+      {!content.title && !content.body && (
+        <div className="p-3 rounded-lg bg-kria-surface border border-kria-border/70 text-xs font-mono text-slate-300 max-h-48 overflow-auto">
+          <pre className="whitespace-pre-wrap">{JSON.stringify(content, null, 2)}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ApprovalsPage() {
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
@@ -243,12 +405,11 @@ export default function ApprovalsPage() {
                   </div>
                 </div>
 
-                {/* Proposed Content Preview Box */}
-                <div className="p-3.5 rounded-lg bg-kria-surface border border-kria-border/70 text-xs font-mono text-slate-300 overflow-x-auto max-h-48">
-                  <pre className="whitespace-pre-wrap font-sans text-xs text-slate-200">
-                    {JSON.stringify(item.proposed_content, null, 2)}
-                  </pre>
-                </div>
+                {/* Proposed Content Preview Box (Clean Business Card View) */}
+                <ProposedContentPreview
+                  content={item.proposed_content}
+                  actionType={item.action_type}
+                />
 
                 {/* Decision Controls */}
                 {item.status === 'pending' ? (
