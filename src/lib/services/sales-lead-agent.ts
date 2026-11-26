@@ -75,9 +75,29 @@ export async function executeSalesLeadAgent(
   }
 
   // 2. Resolve Product Grounding & Authoritative Pricing Quote
-  const requestedSku = req.sku?.trim() || 'KRA-REC-0604';
-  const quantity = typeof req.quantity === 'number' && req.quantity > 0 ? req.quantity : 50;
+  const requestedSku = req.sku?.trim();
+  const quantity = req.quantity;
   const hasSubscription = Boolean(req.has_subscription);
+
+  if (!requestedSku) {
+    return {
+      success: false,
+      execution_mode: 'error',
+      model_invoked: false,
+      is_simulated: false,
+      error: 'A valid product SKU is required before KRIA AI can prepare a quotation.',
+    };
+  }
+
+  if (typeof quantity !== 'number' || !Number.isFinite(quantity) || quantity <= 0) {
+    return {
+      success: false,
+      execution_mode: 'error',
+      model_invoked: false,
+      is_simulated: false,
+      error: 'A valid order quantity is required before KRIA AI can prepare a quotation.',
+    };
+  }
 
   let quoteCalculation: QuoteCalculationResult;
   try {
@@ -86,13 +106,14 @@ export async function executeSalesLeadAgent(
       quantity,
       hasSubscription,
     });
-  } catch {
-    // If specific SKU calculation fails, fall back to core 6x4 frame
-    quoteCalculation = calculateWholesaleQuote({
-      sku: 'KRA-REC-0604',
-      quantity,
-      hasSubscription,
-    });
+  } catch (err: any) {
+    return {
+      success: false,
+      execution_mode: 'error',
+      model_invoked: false,
+      is_simulated: false,
+      error: err?.message || 'Unable to calculate a quote for the requested product.',
+    };
   }
 
   const grounding = resolveProductGrounding({
