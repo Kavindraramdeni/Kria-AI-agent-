@@ -51,7 +51,8 @@ export interface SalesLeadAgentResult {
  * follow-up strategy, and draft response messaging.
  */
 export async function executeSalesLeadAgent(
-  req: SalesLeadAgentRequest
+  req: SalesLeadAgentRequest,
+  customClient?: any
 ): Promise<SalesLeadAgentResult> {
   // 1. Validate Input Against Forbidden Claims
   const allUserInputs = [
@@ -75,9 +76,29 @@ export async function executeSalesLeadAgent(
     };
   }
 
-  // 2. Resolve Product Grounding & Authoritative Pricing Quote
-  const requestedSku = req.sku?.trim() || 'KRA-REC-0604';
-  const quantity = typeof req.quantity === 'number' && req.quantity > 0 ? req.quantity : 50;
+  // 2. Resolve Product Grounding & Authoritative Pricing Quote (Strict Validation — No Fabricated Defaults)
+  const requestedSku = typeof req.sku === 'string' ? req.sku.trim() : '';
+  if (!requestedSku) {
+    return {
+      success: false,
+      execution_mode: 'error',
+      model_invoked: false,
+      is_simulated: false,
+      error: 'Validation failed: Explicit product SKU is required (no silent default substitution).',
+    };
+  }
+
+  if (typeof req.quantity !== 'number' || !Number.isFinite(req.quantity) || req.quantity <= 0) {
+    return {
+      success: false,
+      execution_mode: 'error',
+      model_invoked: false,
+      is_simulated: false,
+      error: 'Validation failed: Explicit positive quantity is required (no silent default substitution).',
+    };
+  }
+
+  const quantity = req.quantity;
   const hasSubscription = Boolean(req.has_subscription);
 
   let quoteCalculation: QuoteCalculationResult;
@@ -87,13 +108,14 @@ export async function executeSalesLeadAgent(
       quantity,
       hasSubscription,
     });
-  } catch {
-    // If specific SKU calculation fails, fall back to core 6x4 frame
-    quoteCalculation = calculateWholesaleQuote({
-      sku: 'KRA-REC-0604',
-      quantity,
-      hasSubscription,
-    });
+  } catch (quoteErr: any) {
+    return {
+      success: false,
+      execution_mode: 'error',
+      model_invoked: false,
+      is_simulated: false,
+      error: quoteErr?.message || `Unknown SKU '${requestedSku}' — rejected without substitution.`,
+    };
   }
 
   const grounding = resolveProductGrounding({
@@ -215,12 +237,14 @@ ${PROMPT_INJECTION_DEFENSE}
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (process.env.NODE_ENV === 'test' || (supabaseUrl && !supabaseUrl.includes('placeholder'))) {
-      let supabase: any;
-      try {
-        supabase = createClient();
-      } catch {
-        const { createClient: createBrowserClient } = await import('@/lib/supabase/client');
-        supabase = createBrowserClient();
+      let supabase: any = customClient;
+      if (!supabase) {
+        try {
+          supabase = createClient();
+        } catch {
+          const { createClient: createBrowserClient } = await import('@/lib/supabase/client');
+          supabase = createBrowserClient();
+        }
       }
 
       const calculatedStatus = quoteCalculation.is_below_moq
@@ -341,13 +365,16 @@ ${PROMPT_INJECTION_DEFENSE}
         : 24;
 
     if (savedLeadId) {
-      await createFollowUp({
-        lead_id: savedLeadId,
-        follow_up_hours: followUpHours,
-        action_type: generated.suggested_action || 'sales_follow_up',
-        notes: `AI-scheduled follow-up after quote dispatch. Score: ${generated.score}/100 (${generated.intent_tier}).`,
-        approval_id: approvalId,
-      });
+      await createFollowUp(
+        {
+          lead_id: savedLeadId,
+          follow_up_hours: followUpHours,
+          action_type: generated.suggested_action || 'sales_follow_up',
+          notes: `AI-scheduled follow-up after quote dispatch. Score: ${generated.score}/100 (${generated.intent_tier}).`,
+          approval_id: approvalId,
+        },
+        customClient
+      );
     }
   } catch (followUpErr: any) {
     // Non-fatal: log but do not block the sales result

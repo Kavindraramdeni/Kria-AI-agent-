@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeSalesLeadAgent } from '@/lib/services/sales-lead-agent';
+import { advanceWorkflow, DEMO_WORKFLOW_RUNS } from '@/lib/workflows/b2b-bulk-order-workflow';
+import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/services/rate-limit';
 import { logActivity } from '@/lib/services/activity-logs';
 
@@ -67,37 +69,192 @@ export async function POST(req: NextRequest) {
       location,
       notes,
       message,
+      is_reply,
+      reply_to_lead_id,
       source = 'kriatech_storefront',
     } = body;
 
     // Contact info requirement: at least phone or email or name must be present
-    if (!phone && !email && !name) {
+    if (!phone && !email && !name && !reply_to_lead_id) {
       return NextResponse.json(
         { error: 'Validation failed: At least one of name, phone, or email is required.' },
         { status: 400 }
       );
     }
 
+    let supabase: any = undefined;
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (process.env.NODE_ENV === 'test' || (supabaseUrl && !supabaseUrl.includes('placeholder'))) {
+        supabase = createClient();
+      }
+    } catch {
+      supabase = undefined;
+    }
+
+    // 3b. Inbound Customer Reply Tracking (Stage 4 -> Stage 5: awaiting_reply -> qualified)
+    if (is_reply === true || reply_to_lead_id) {
+      const replyText = message || notes || 'Customer replied to outreach.';
+      let matchedLeadId: string | undefined = reply_to_lead_id;
+      let matchedWorkflowId: string | undefined;
+
+      // Check demo workflow runs first if in demo/test mode without DB match
+      const demoRun = DEMO_WORKFLOW_RUNS.find(
+        (r) =>
+          r.current_stage === 'awaiting_reply' &&
+          ((matchedLeadId && r.lead_id === matchedLeadId) ||
+            (phone && r.metadata?.lead_input?.phone === phone) ||
+            (email && r.metadata?.lead_input?.email === email))
+      );
+      if (demoRun) {
+        matchedWorkflowId = demoRun.id;
+        matchedLeadId = matchedLeadId || demoRun.lead_id || undefined;
+      }
+
+      if (supabase && typeof supabase.from === 'function') {
+        try {
+          if (!matchedLeadId && (phone || email)) {
+            let leadQuery = supabase.from('leads').select('id');
+            if (phone) leadQuery = leadQuery.eq('phone', phone);
+            else if (email) leadQuery = leadQuery.eq('email', email);
+            const { data: leadRow } = await leadQuery.maybeSingle?.() || { data: null };
+            if (leadRow?.id) matchedLeadId = leadRow.id;
+          }
+
+          if (matchedLeadId && !matchedWorkflowId) {
+            const { data: wfRow } =
+              (await supabase
+                .from('workflow_runs')
+                .select('id')
+                .eq('lead_id', matchedLeadId)
+                .eq('current_stage', 'awaiting_reply')
+                .maybeSingle?.()) || { data: null };
+            if (wfRow?.id) matchedWorkflowId = wfRow.id;
+          }
+
+          if (matchedLeadId) {
+            await supabase
+              .from('approval_requests')
+              .update({
+                execution_state: 'customer_responded',
+                customer_responded_at: new Date().toISOString(),
+                customer_response: replyText,
+              })
+              .eq('lead_id', matchedLeadId);
+          }
+        } catch (replyErr: any) {
+          console.warn('Reply lookup warning:', replyErr?.message);
+        }
+      }
+
+      let advanceRes: any = null;
+      if (matchedWorkflowId) {
+        advanceRes = await advanceWorkflow(
+          matchedWorkflowId,
+          'qualified',
+          {
+            reply_message: replyText,
+            sku: typeof sku === 'string' && sku.trim() ? sku.trim() : undefined,
+            quantity: Number(quantity) > 0 ? Number(quantity) : undefined,
+            budget: budget ? Number(budget) : undefined,
+          },
+          demoRun ? undefined : supabase
+        );
+      }
+
+      await logActivity({
+        entity_type: 'lead',
+        entity_id: matchedLeadId || phone || email || 'unknown',
+        action: 'inbound_customer_reply_tracked',
+        description: `Inbound customer reply recorded${matchedWorkflowId ? ` and workflow ${matchedWorkflowId} advanced to qualified` : ''}.`,
+        actor_type: 'system',
+        actor_id: 'inbound-webhook',
+        metadata: {
+          lead_id: matchedLeadId,
+          workflow_run_id: matchedWorkflowId,
+          reply_message: replyText,
+        },
+      });
+
+      return NextResponse.json(
+        {
+          success: true,
+          reply_tracked: true,
+          data: {
+            lead_id: matchedLeadId || null,
+            workflow_run_id: matchedWorkflowId || null,
+            workflow_stage: advanceRes?.current_stage || null,
+            execution_state: advanceRes?.execution_state || 'customer_responded',
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    // 3c. Strict SKU & Quantity Validation (No fabricated defaults)
+    const targetSku = typeof sku === 'string' ? sku.trim() : '';
+    if (!targetSku) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Validation failed: Explicit product SKU is required (e.g. KRA-SQU-0202, KRA-REC-0604, KRA-KIT-DEMO24).',
+        },
+        { status: 400 }
+      );
+    }
+
     const parsedQty = Number(quantity);
-    const validQuantity = Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : 50; // Default to 50 pcs MOQ
-    const targetSku = typeof sku === 'string' && sku.trim() !== '' ? sku.trim() : 'KRA-SQU-0202';
+    if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Validation failed: Explicit positive quantity is required.',
+        },
+        { status: 400 }
+      );
+    }
+
+    const validQuantity = parsedQty;
     const promptMessage = notes || message || `Inbound B2B wholesale inquiry from ${name || 'Buyer'} for ${validQuantity} units.`;
 
     // 4. Run Sales & CRM Lead Agent (Deterministic Pricing + Intent Qualification + Approval Gate)
-    const agentResult = await executeSalesLeadAgent({
-      lead_name: name || 'Inquiry Contact',
-      business_name: business_name || null,
-      phone: phone || undefined,
-      email: email || undefined,
-      location: location || undefined,
-      sku: targetSku,
-      quantity: validQuantity,
-      has_subscription: Boolean(has_subscription),
-      budget: budget ? Number(budget) : undefined,
-      source,
-      topic_or_prompt: promptMessage,
-      actor_email: 'system@kriatech.in',
-    });
+    const agentResult = await executeSalesLeadAgent(
+      {
+        lead_name: name || 'Inquiry Contact',
+        business_name: business_name || null,
+        phone: phone || undefined,
+        email: email || undefined,
+        location: location || undefined,
+        sku: targetSku,
+        quantity: validQuantity,
+        has_subscription: Boolean(has_subscription),
+        budget: budget ? Number(budget) : undefined,
+        source,
+        topic_or_prompt: promptMessage,
+        actor_email: 'system@kriatech.in',
+      },
+      supabase
+    );
+
+    if (!agentResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: agentResult.error || 'Sales agent rejected or failed to process inquiry.',
+        },
+        { status: 422 }
+      );
+    }
+
+    if (!agentResult.saved_lead_id || !agentResult.approval_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Persistence error: Lead record or owner quote approval could not be created.',
+        },
+        { status: 500 }
+      );
+    }
 
     // 5. Log Activity Audit Trail
     await logActivity({

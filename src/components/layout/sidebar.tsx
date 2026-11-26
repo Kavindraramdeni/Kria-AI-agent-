@@ -33,6 +33,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Overview', href: '/', icon: LayoutDashboard },
+  { label: 'Sales Workflow', href: '/sales-workflow', icon: Zap, badge: '8-Step' },
   { label: 'AI Agents', href: '/agents', icon: Bot, badge: '6' },
   { label: 'Products', href: '/products', icon: Package },
   { label: 'Leads & CRM', href: '/leads', icon: Users },

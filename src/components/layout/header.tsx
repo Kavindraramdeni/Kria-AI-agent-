@@ -88,6 +88,14 @@ export function Header({ title = 'Command Center', subtitle = 'KRIA TECH Growth 
         {/* Quick Actions Dropdown / Direct Links */}
         <div className="hidden sm:flex items-center gap-2">
           <Link
+            href="/sales-workflow"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-kria-800 hover:bg-kria-700 text-slate-200 border border-kria-border transition-colors"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-electric-light" />
+            Sales Workflow
+          </Link>
+
+          <Link
             href="/leads"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-kria-800 hover:bg-kria-700 text-slate-200 border border-kria-border transition-colors"
           >
