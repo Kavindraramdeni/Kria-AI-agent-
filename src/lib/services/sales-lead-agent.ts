@@ -28,6 +28,7 @@ export interface SalesLeadAgentRequest {
   source?: string;
   topic_or_prompt?: string;
   actor_email?: string;
+  supabaseClient?: any;
 }
 
 export interface SalesLeadAgentResult {
@@ -237,10 +238,16 @@ ${PROMPT_INJECTION_DEFENSE}
     if (process.env.NODE_ENV === 'test' || (supabaseUrl && !supabaseUrl.includes('placeholder'))) {
       let supabase: any;
       try {
-        supabase = createClient();
+        supabase = req.supabaseClient || createClient();
       } catch {
-        const { createClient: createBrowserClient } = await import('@/lib/supabase/client');
-        supabase = createBrowserClient();
+        return {
+          success: false,
+          execution_mode: 'error',
+          model_invoked: true,
+          is_simulated: false,
+          model_name: geminiResult.model,
+          error: 'CRM database client could not be initialized after AI qualification.',
+        };
       }
 
       const calculatedStatus = quoteCalculation.is_below_moq
@@ -261,9 +268,7 @@ ${PROMPT_INJECTION_DEFENSE}
           })
           .eq('id', req.lead_id);
 
-        if (error) {
-          console.warn('Supabase lead update warning:', error.message);
-        }
+        if (error) throw new Error(`CRM lead update failed: ${error.message}`);
       } else {
         // Insert new lead into CRM
         const { data, error } = await supabase
@@ -288,15 +293,31 @@ ${PROMPT_INJECTION_DEFENSE}
           .select('id')
           .single();
 
-        if (error) {
-          console.warn('Supabase lead insert warning:', error.message);
-        } else if (data) {
-          savedLeadId = data.id;
-        }
+        if (error) throw new Error(`CRM lead insert failed: ${error.message}`);
+        if (data) savedLeadId = data.id;
       }
     }
   } catch (persistErr: any) {
-    console.error('Warning: Failed to sync lead into Supabase CRM:', persistErr);
+    console.error('Failed to sync lead into Supabase CRM:', persistErr);
+    return {
+      success: false,
+      execution_mode: 'error',
+      model_invoked: true,
+      is_simulated: false,
+      model_name: geminiResult.model,
+      error: persistErr?.message || 'Failed to persist the lead in the CRM.',
+    };
+  }
+
+  if (!savedLeadId) {
+    return {
+      success: false,
+      execution_mode: 'error',
+      model_invoked: true,
+      is_simulated: false,
+      model_name: geminiResult.model,
+      error: 'CRM did not return a saved lead ID.',
+    };
   }
 
   // 6. Submit Quotation to Human Approval Queue
@@ -325,13 +346,34 @@ ${PROMPT_INJECTION_DEFENSE}
       agent_id: 'sales-agent',
       risk_level: 'medium',
       requested_by: req.actor_email || null,
-    });
+    }, req.supabaseClient);
 
     if (approvalRes.success && approvalRes.data) {
       approvalId = approvalRes.data.id;
     }
   } catch (approvalErr: any) {
-    console.error('Warning: Failed to route quote to Approval Gate:', approvalErr);
+    console.error('Failed to route quote to Approval Gate:', approvalErr);
+    return {
+      success: false,
+      execution_mode: 'error',
+      model_invoked: true,
+      is_simulated: false,
+      model_name: geminiResult.model,
+      saved_lead_id: savedLeadId,
+      error: approvalErr?.message || 'Failed to create quotation approval.',
+    };
+  }
+
+  if (!approvalId) {
+    return {
+      success: false,
+      execution_mode: 'error',
+      model_invoked: true,
+      is_simulated: false,
+      model_name: geminiResult.model,
+      saved_lead_id: savedLeadId,
+      error: 'Quotation approval request was not persisted.',
+    };
   }
 
   // 7. Log Activity Trail
