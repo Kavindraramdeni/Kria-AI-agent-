@@ -146,7 +146,7 @@ function LoginForm() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="kavindraraj1703@gmail.com"
+                  placeholder="admin@kriatech.com"
                   className="w-full pl-9 pr-4 py-2 rounded-lg bg-kria-850 border border-kria-border text-xs text-white placeholder-slate-500 focus:outline-none focus:border-electric"
                 />
                 <Mail className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
