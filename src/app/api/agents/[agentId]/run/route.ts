@@ -251,7 +251,7 @@ export async function POST(
       }
 
       case 'website-agent': {
-        const auditTargetUrl = body.target_url || (typeof input === 'string' && input.startsWith('http') ? input.trim() : undefined) || 'https://kriatech.com/products/acrylic-frames';
+        const auditTargetUrl = body.target_url || (typeof input === 'string' && input.startsWith('http') ? input.trim() : undefined) || 'https://kriatech.in';
         const auditResult = await executeWebsiteAuditAgent({
           target_url: auditTargetUrl,
           product_name: body.product_name,

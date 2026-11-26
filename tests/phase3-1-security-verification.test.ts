@@ -176,7 +176,7 @@ describe('Phase 3.1 — Security & Reality Verification Suite', () => {
       expect(isRestrictedHostname('instance-data')).toBe(true);
 
       // Public domains must NOT be restricted
-      expect(isRestrictedHostname('kriatech.com')).toBe(false);
+      expect(isRestrictedHostname('kriatech.in')).toBe(false);
       expect(isRestrictedHostname('google.com')).toBe(false);
       expect(isRestrictedHostname('example.com')).toBe(false);
     });
@@ -214,7 +214,7 @@ describe('Phase 3.1 — Security & Reality Verification Suite', () => {
 
       try {
         await expect(
-          performComprehensiveSeoScan({ url: 'https://kriatech.com/redirect-to-private' })
+          performComprehensiveSeoScan({ url: 'https://kriatech.in/redirect-to-private' })
         ).rejects.toThrow(/SSRF Security Rejection/);
       } finally {
         global.fetch = originalFetch;
@@ -236,7 +236,7 @@ describe('Phase 3.1 — Security & Reality Verification Suite', () => {
 
       try {
         await expect(
-          performComprehensiveSeoScan({ url: 'https://kriatech.com/huge-page' })
+          performComprehensiveSeoScan({ url: 'https://kriatech.in/huge-page' })
         ).rejects.toThrow(/Response Size Exceeded: Target page size exceeds 5 MB limit/);
       } finally {
         global.fetch = originalFetch;
@@ -252,7 +252,7 @@ describe('Phase 3.1 — Security & Reality Verification Suite', () => {
 <head>
   <title>KRIA Acrylic Frames</title>
   <meta name="description" content="Direct factory wholesale acrylic photo frames manufactured in Hyderabad.">
-  <link rel="canonical" href="https://kriatech.com/products/frames">
+  <link rel="canonical" href="https://kriatech.in/products/frames">
   <script defer src="/app.js"></script>
 </head>
 <body>
@@ -263,7 +263,7 @@ describe('Phase 3.1 — Security & Reality Verification Suite', () => {
       `.trim();
 
       const scan = await performComprehensiveSeoScan({
-        url: 'https://kriatech.com/products/frames',
+        url: 'https://kriatech.in/products/frames',
         mockHtml: sampleHtml,
       });
 

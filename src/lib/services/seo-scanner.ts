@@ -327,7 +327,8 @@ export async function validateUrlForSsrf(urlString: string): Promise<URL> {
   // Allow test mocks to skip real DNS lookup in test environment
   if (
     process.env.NODE_ENV === 'test' &&
-    (parsedUrl.hostname === 'kriatech.com' ||
+    (parsedUrl.hostname === 'kriatech.in' ||
+      parsedUrl.hostname === 'www.kriatech.in' ||
       parsedUrl.hostname === 'example.com' ||
       parsedUrl.hostname === 'invalid-domain.xyz')
   ) {
@@ -476,7 +477,7 @@ export function executeSingleSafeHop(
       method: 'GET',
       headers: {
         'Host': targetUrl.host,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) KRIA-Tech-SEO-Scanner/2.0 (+https://kriatech.com; scanner)',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) KRIA-Tech-SEO-Scanner/2.0 (+https://kriatech.in; scanner)',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'close',

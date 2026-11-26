@@ -12,9 +12,10 @@ async function main() {
 
   // Authenticate session if possible
   const supabase = createClient();
+  const adminEmail = process.env.KRIA_ADMIN_EMAIL || 'sales@kriatech.in';
   const { data: authData } = await supabase.auth.signInWithPassword({
-    email: 'admin@kriatech.com',
-    password: 'kria-demo-pass-2026',
+    email: adminEmail,
+    password: process.env.KRIA_ADMIN_PASSWORD || 'kria-demo-pass-2026',
   });
   if (authData?.user) {
     console.log('Authenticated session established for:', authData.user.email);
@@ -28,7 +29,7 @@ async function main() {
     sku: 'MAPF-0406-CL',
     target_category: 'Tabletop Acrylic Photo Blocks',
     topic_or_prompt: 'Compare 4x6 acrylic tabletop block thickness (20mm cast vs 12-15mm extruded), light transmission, and retail price markup against KRIA direct Hyderabad factory pricing.',
-    actor_email: 'admin@kriatech.com',
+    actor_email: adminEmail,
     supabaseClient: supabase,
   });
   const elapsed = ((Date.now() - start) / 1000).toFixed(2);

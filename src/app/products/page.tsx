@@ -269,7 +269,7 @@ export default function ProductsPage() {
       min_bulk_quantity: parseInt(formMinBulkQty, 10) || 50,
       description: formDescription.trim() || null,
       production_notes: formProductionNotes.trim() || null,
-      materials: ['2mm Monolithic Cell-Cast Acrylic', 'Grade N35 Flush Neodymium Magnet'],
+      materials: ['100% Cell-Cast Monolithic 2mm + 2mm (4mm Dual-Plate) Acrylic', '8 Grade N35 Flush Neodymium Magnets per Frame'],
       available_shapes: ['Custom'],
       status: formStatus, // Safe default to draft
       is_demo: false,
@@ -720,7 +720,7 @@ export default function ProductsPage() {
                                 {prod.name}
                               </h3>
                               <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                                {prod.dimensions || '2mm Cell-Cast Acrylic'}
+                                {prod.dimensions || '2mm + 2mm (4mm) Monolithic Cell-Cast Acrylic'}
                               </p>
                             </div>
                           </div>
@@ -830,8 +830,8 @@ export default function ProductsPage() {
                 <strong className="text-white">{products.length}</strong> total products
               </div>
               <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" /> 3 Live Storefront
-                <span className="inline-block w-2 h-2 rounded-full bg-amber-400 ml-2" /> 15 Staged Drafts
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" /> {metrics.active} Live Storefront
+                <span className="inline-block w-2 h-2 rounded-full bg-amber-400 ml-2" /> {metrics.draft} Staged Drafts
               </div>
             </div>
           </div>
@@ -903,7 +903,7 @@ export default function ProductsPage() {
                       </h3>
 
                       <p className="text-xs text-slate-400 line-clamp-2">
-                        {prod.description || 'Monolithic 2mm cell-cast acrylic with rare-earth magnetic assembly.'}
+                        {prod.description || '100% cell-cast monolithic 2mm + 2mm (4mm dual-plate) acrylic with 8 Grade N35 magnets per frame.'}
                       </p>
 
                       <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[11px] text-slate-300 space-y-1">
@@ -1009,7 +1009,7 @@ export default function ProductsPage() {
                         Dimensions
                       </span>
                       <strong className="text-white text-xs">
-                        {selectedProduct.dimensions || '2mm Cell-Cast Acrylic'}
+                        {selectedProduct.dimensions || '2mm + 2mm (4mm) Monolithic Cell-Cast Acrylic'}
                       </strong>
                     </div>
                     <div>
@@ -1035,7 +1035,7 @@ export default function ProductsPage() {
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 block">Magnet Specification</span>
-                      <strong className="text-cyan-300">Grade N35 Flush Countersunk</strong>
+                      <strong className="text-cyan-300">8 Grade N35 Flush Countersunk per Frame</strong>
                     </div>
                   </div>
 

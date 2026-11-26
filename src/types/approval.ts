@@ -17,6 +17,14 @@ export type ApprovalStatus =
   | 'failed'
   | 'executed';
 
+export type ExecutionState =
+  | 'ai_generated'
+  | 'awaiting_approval'
+  | 'simulated'
+  | 'sent_to_provider'
+  | 'provider_accepted'
+  | 'customer_responded';
+
 export interface ApprovalRequest {
   id: string;
   action_type: ApprovalActionType;
@@ -24,6 +32,13 @@ export interface ApprovalRequest {
   proposed_content: Record<string, any>;
   destination: string;
   agent_id: string | null;
+  lead_id?: string | null;
+  workflow_run_id?: string | null;
+  execution_state?: ExecutionState;
+  provider_message_id?: string | null;
+  provider_accepted_at?: string | null;
+  customer_responded_at?: string | null;
+  customer_response?: string | null;
   risk_level: ApprovalRiskLevel;
   status: ApprovalStatus;
   requested_by: string | null;
@@ -42,6 +57,7 @@ export interface ApprovalRequest {
 export interface ApprovalExecutionResult {
   success: boolean;
   approval_id: string;
+  execution_state?: ExecutionState;
   executed_at?: string;
   error?: string;
   audit_logged: boolean;

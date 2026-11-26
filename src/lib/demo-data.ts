@@ -1,13 +1,13 @@
 import { Product, Lead, LeadActivity, SEOKeyword, ActivityLog } from '@/types/database';
 import { ApprovalRequest } from '@/types/approval';
+import { KRIA_CATALOG_VARIANTS } from '@/lib/data/kria-catalog-matrix';
 import { isDemoModeActive } from './demo-mode';
 
 /**
- * Authoritative KRIA TECH Verified Product Specifications
- * Strictly verified factory dimensions, N52 magnets, and wholesale pricing.
- * Retained as verified foundational catalog (is_demo: false).
+ * Legacy Tabletop Acrylic Photo Block Standards (MAPF-*)
+ * Retained for tabletop block grounding and backward compatibility.
  */
-export const VERIFIED_KRIA_PRODUCTS: Product[] = [
+export const LEGACY_MAPF_PRODUCTS: Product[] = [
   {
     id: 'prod-001',
     name: 'Clear Magnetic Acrylic Photo Frame (4x6 inch)',
@@ -82,7 +82,22 @@ export const VERIFIED_KRIA_PRODUCTS: Product[] = [
   },
 ];
 
-export const DEMO_PRODUCTS: Product[] = VERIFIED_KRIA_PRODUCTS;
+/**
+ * Authoritative KRIA TECH Verified Product Specifications
+ * Consolidates all 15 KRA-* bulk magnetic fridge frame, keychain, and Demo Starter Kit SKUs
+ * alongside the 3 legacy MAPF-* tabletop block standards (is_demo: false).
+ */
+export const VERIFIED_KRIA_PRODUCTS: Product[] = [
+  ...KRIA_CATALOG_VARIANTS.map((variant) => ({
+    ...variant,
+    id: `prod-${variant.sku.toLowerCase()}`,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+  })),
+  ...LEGACY_MAPF_PRODUCTS,
+];
+
+export const DEMO_PRODUCTS: Product[] = [...VERIFIED_KRIA_PRODUCTS];
 
 /**
  * Optional Demo Fixtures (Only loaded when user explicitly enables Demo Mode in Settings)
@@ -135,10 +150,11 @@ export const OPTIONAL_DEMO_APPROVALS: ApprovalRequest[] = [
   {
     id: 'appr-001',
     action_type: 'content_publish',
-    title: 'Instagram Post: Why Minimalist Magnetic Frames Outshine Glass [DEMO]',
+    title: 'Instagram Post: 2mm + 2mm Cast Acrylic Fridge Magnets (MOQ 50 / Starter Kit ₹999) [DEMO]',
     proposed_content: {
-      caption: 'Sample social copy showcasing 20mm diamond-beveled acrylic blocks.',
-      hashtags: ['#KRIAtech', '#AcrylicPhotoFrame'],
+      caption:
+        'Factory-direct from Hyderabad: 100% cell-cast monolithic 2mm + 2mm (4mm dual-plate) acrylic fridge magnets with 8 Grade N35 flush neodymium magnets per frame. MOQ 50 pcs or try our 24-pc Demo Starter Kit for ₹999 with free pan-India air delivery at https://kriatech.in!',
+      hashtags: ['#KRIAtech', '#AcrylicPhotoFrame', '#FridgeMagnets'],
     },
     destination: 'Instagram / KRIA TECH Feed',
     agent_id: 'content-agent',
@@ -175,12 +191,13 @@ export const OPTIONAL_DEMO_ACTIVITY_LOGS: ActivityLog[] = [
   {
     id: 'act-001',
     entity_type: 'product',
-    entity_id: 'MAPF-0406-CL',
+    entity_id: 'KRA-REC-0604',
     action: 'product_verified',
-    description: 'Verified factory specifications: 20mm Clear Magnetic Acrylic Photo Frame (4x6 inch)',
+    description:
+      'Verified factory specifications: 2mm + 2mm (4mm dual-plate) Classic Rectangle Acrylic Photo Magnet (6×4") with 8 Grade N35 magnets per frame, MOQ 50 pcs',
     actor_type: 'system',
     actor_id: 'system',
-    metadata: { sku: 'MAPF-0406-CL' },
+    metadata: { sku: 'KRA-REC-0604', starter_kit_sku: 'KRA-KIT-DEMO24' },
     created_at: new Date(Date.now() - 86400000 * 1).toISOString(),
   },
 ];

@@ -11,19 +11,33 @@ export interface UserSession {
 }
 
 export const DEMO_USERS: Record<string, UserSession> = {
-  'admin@kriatech.com': {
+  'admin@kriatech.in': {
     id: 'user-owner-001',
-    email: 'admin@kriatech.com',
+    email: 'admin@kriatech.in',
     role: 'owner',
     fullName: 'Kria Tech Owner',
     isDemo: true,
   },
-  'staff@kriatech.com': {
+  'sales@kriatech.in': {
+    id: 'user-owner-001',
+    email: 'sales@kriatech.in',
+    role: 'owner',
+    fullName: 'KRIA Tech Sales Owner',
+    isDemo: true,
+  },
+  'staff@kriatech.in': {
     id: 'user-staff-002',
-    email: 'staff@kriatech.com',
+    email: 'staff@kriatech.in',
     role: 'staff',
     fullName: 'Shop Floor Staff',
     isDemo: true,
+  },
+  'kavindraraj1703@gmail.com': {
+    id: 'user-owner-001',
+    email: 'kavindraraj1703@gmail.com',
+    role: 'owner',
+    fullName: 'Kavindra (KRIA Owner)',
+    isDemo: false,
   },
 };
 
@@ -96,7 +110,7 @@ export async function getServerSession(customClient?: any): Promise<UserSession 
 
   // Development-only isolated demo mode (strictly opt-in, never active in production)
   if (process.env.NODE_ENV === 'development' && isDemoModeActive()) {
-    return DEMO_USERS['admin@kriatech.com'];
+    return DEMO_USERS['admin@kriatech.in'];
   }
 
   // Default: strictly null when unauthenticated

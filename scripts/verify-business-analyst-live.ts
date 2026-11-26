@@ -12,9 +12,10 @@ async function main() {
 
   // Authenticate session if possible
   const supabase = createClient();
+  const adminEmail = process.env.KRIA_ADMIN_EMAIL || 'sales@kriatech.in';
   const { data: authData } = await supabase.auth.signInWithPassword({
-    email: 'admin@kriatech.com',
-    password: 'kria-demo-pass-2026',
+    email: adminEmail,
+    password: process.env.KRIA_ADMIN_PASSWORD || 'kria-demo-pass-2026',
   });
   if (authData?.user) {
     console.log('Authenticated session established for:', authData.user.email);
@@ -26,7 +27,7 @@ async function main() {
   const result = await executeBusinessAnalystAgent({
     focus_area: 'executive_brief',
     topic_or_prompt: 'Synthesize Q4 production velocity, wholesale tier margin thresholds, and B2B pipeline conversion levers for Hyderabad facility.',
-    actor_email: 'admin@kriatech.com',
+    actor_email: adminEmail,
     supabaseClient: supabase,
   });
   const elapsed = ((Date.now() - start) / 1000).toFixed(2);

@@ -12,9 +12,10 @@ async function main() {
 
   // Authenticate session if possible
   const supabase = createClient();
+  const adminEmail = process.env.KRIA_ADMIN_EMAIL || 'sales@kriatech.in';
   const { data: authData } = await supabase.auth.signInWithPassword({
-    email: 'admin@kriatech.com',
-    password: 'kria-demo-pass-2026',
+    email: adminEmail,
+    password: process.env.KRIA_ADMIN_PASSWORD || 'kria-demo-pass-2026',
   });
   if (authData?.user) {
     console.log('Authenticated session established for:', authData.user.email);

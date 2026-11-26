@@ -13,20 +13,20 @@ import { Copy, Check, Sparkles, PenTool } from 'lucide-react';
 const OPTIONAL_DEMO_CONTENT: ContentItem[] = [
   {
     id: 'cnt-001',
-    title: 'Instagram Carousel: 3 Reasons Acrylic Blocks Beat Glass Photo Frames [DEMO]',
+    title: 'B2B Carousel: Why KRIA 2mm + 2mm Magnetic Acrylic Fridge Frames Lead Retail Margins [DEMO]',
     content_type: 'instagram_caption',
-    body: `Why settle for fragile, reflective glass when you can showcase memories in floating clarity? ✨
+    body: `Upgrade your gift store or photo studio margins with factory-direct KRIA Tech magnetic acrylic frames from Hyderabad, Telangana! ✨
 
-1. Optical Grade Cast Acrylic — 92% light transmission.
-2. 4-Corner N52 Neodymium Magnets — Swap pictures in seconds.
-3. 20mm Solid Self-Standing Block — No bulky kickstand needed.
+1. 100% Cell-Cast Monolithic 2mm + 2mm (4mm Dual-Plate) Acrylic — 93% optical clarity.
+2. 8 Grade N35 Flush Neodymium Magnets per Frame — High hold with minimal contact friction.
+3. Accessible MOQ 50 pcs — Or test quality first with our Demo Starter Kit (KRA-KIT-DEMO24): 24 pcs for ₹999 with free pan-India air delivery!
 
-DM for bulk wholesale catalogs!
-#KRIAtech #AcrylicPhotoFrame #CustomFraming`,
-    target_audience: 'Home decor enthusiasts, gift shop owners',
-    objective: 'Demonstrate superior optical clarity',
-    keywords: ['magnetic acrylic photo frame', 'floating desk frame'],
-    suggested_cta: 'DM for wholesale inquiries',
+Order via https://kriatech.in | WhatsApp: +91-9392576792 | Email: sales@kriatech.in
+#KRIAtech #AcrylicPhotoFrame #B2BWholesale`,
+    target_audience: 'Souvenir gift shop owners, wedding planners, photo studios',
+    objective: 'Drive Demo Starter Kit and MOQ 50 bulk inquiries',
+    keywords: ['magnetic acrylic photo frame', 'acrylic fridge magnet wholesale', 'kriatech.in'],
+    suggested_cta: 'WhatsApp +91-9392576792 or visit https://kriatech.in',
     status: 'review',
     generated_by_agent_task_id: null,
     scheduled_for: new Date(Date.now() + 86400000 * 2).toISOString(),

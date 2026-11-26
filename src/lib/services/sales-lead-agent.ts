@@ -3,6 +3,7 @@ import { generateStructuredWithGemini } from '@/lib/ai/gemini-client';
 import { PROMPT_INJECTION_DEFENSE } from '@/lib/agents/guardrails';
 import { createClient } from '@/lib/supabase/server';
 import { createApprovalRequest } from '@/lib/services/approvals';
+import { createFollowUp } from '@/lib/services/follow-up-scheduler';
 import { logActivity } from '@/lib/services/activity-logs';
 import { calculateWholesaleQuote, QuoteCalculationResult } from '@/lib/services/pricing-engine';
 import {
@@ -279,7 +280,20 @@ ${PROMPT_INJECTION_DEFENSE}
   }
 
   // 6. Submit Quotation to Human Approval Queue
+  //    R2 FIX: Store lead_id, phone_number, and email in metadata so the dispatcher
+  //    can resolve the actual recipient instead of using a literal channel-name string.
   let approvalId: string | undefined;
+  const resolvedPhone = req.phone || null;
+  const resolvedEmail = req.email || null;
+
+  // Determine the display destination for the approval card:
+  // Use the real phone/email if available; otherwise fall back to a channel label.
+  const resolvedDestination = resolvedPhone
+    ? `whatsapp:${resolvedPhone}`
+    : resolvedEmail
+    ? `email:${resolvedEmail}`
+    : 'whatsapp:+91-9392576792'; // KRIA Tech owner fallback
+
   try {
     const approvalRes = await createApprovalRequest({
       action_type: 'customer_message',
@@ -287,6 +301,10 @@ ${PROMPT_INJECTION_DEFENSE}
       proposed_content: {
         lead_name: req.lead_name || 'Prospective Buyer',
         business_name: req.business_name || null,
+        // R2: Real contact info so dispatcher resolves recipient correctly
+        lead_id: savedLeadId || req.lead_id || null,
+        phone_number: resolvedPhone,
+        email: resolvedEmail,
         sku: quoteCalculation.sku,
         product_name: quoteCalculation.product_name,
         quantity: quoteCalculation.quantity,
@@ -300,8 +318,9 @@ ${PROMPT_INJECTION_DEFENSE}
         draft_response_message: generated.draft_response_message,
         model_used: geminiResult.model,
       },
-      destination: `Customer Outreach Channel (WhatsApp / Email)`,
+      destination: resolvedDestination,
       agent_id: 'sales-agent',
+      lead_id: savedLeadId || req.lead_id || null,
       risk_level: 'medium',
       requested_by: req.actor_email || null,
     });
@@ -311,6 +330,28 @@ ${PROMPT_INJECTION_DEFENSE}
     }
   } catch (approvalErr: any) {
     console.error('Warning: Failed to route quote to Approval Gate:', approvalErr);
+  }
+
+  // R3: Create a durable follow-up record using suggested_follow_up_hours from AI output
+  try {
+    const followUpHours =
+      typeof generated.suggested_follow_up_hours === 'number' &&
+      generated.suggested_follow_up_hours > 0
+        ? generated.suggested_follow_up_hours
+        : 24;
+
+    if (savedLeadId) {
+      await createFollowUp({
+        lead_id: savedLeadId,
+        follow_up_hours: followUpHours,
+        action_type: generated.suggested_action || 'sales_follow_up',
+        notes: `AI-scheduled follow-up after quote dispatch. Score: ${generated.score}/100 (${generated.intent_tier}).`,
+        approval_id: approvalId,
+      });
+    }
+  } catch (followUpErr: any) {
+    // Non-fatal: log but do not block the sales result
+    console.warn('Warning: Failed to schedule follow-up:', followUpErr?.message);
   }
 
   // 7. Log Activity Trail

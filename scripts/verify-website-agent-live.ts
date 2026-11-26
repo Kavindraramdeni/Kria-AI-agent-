@@ -12,9 +12,10 @@ async function main() {
 
   // Authenticate session if possible
   const supabase = createClient();
+  const adminEmail = process.env.KRIA_ADMIN_EMAIL || 'sales@kriatech.in';
   const { data: authData } = await supabase.auth.signInWithPassword({
-    email: 'admin@kriatech.com',
-    password: 'kria-demo-pass-2026',
+    email: adminEmail,
+    password: process.env.KRIA_ADMIN_PASSWORD || 'kria-demo-pass-2026',
   });
   if (authData?.user) {
     console.log('Authenticated session established for:', authData.user.email);
@@ -27,7 +28,7 @@ async function main() {
   <meta charset="UTF-8">
   <title>Custom Acrylic Photo Frames | KRIA TECH Hyderabad Factory</title>
   <meta name="description" content="Direct factory wholesale acrylic photo frames & fridge magnets crafted in Hyderabad from 2mm virgin cell-cast acrylic with flush N35 neodymium magnets.">
-  <link rel="canonical" href="https://kriatech.com/products/acrylic-frames">
+  <link rel="canonical" href="https://kriatech.in">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script type="application/ld+json">
   {
@@ -60,9 +61,9 @@ async function main() {
 
   const start = Date.now();
   const result = await executeWebsiteAuditAgent({
-    target_url: 'https://kriatech.com/products/acrylic-frames',
+    target_url: 'https://kriatech.in',
     mockHtml: sampleHtml,
-    actor_email: 'admin@kriatech.com',
+    actor_email: adminEmail,
     supabaseClient: supabase,
   });
   const elapsed = ((Date.now() - start) / 1000).toFixed(2);

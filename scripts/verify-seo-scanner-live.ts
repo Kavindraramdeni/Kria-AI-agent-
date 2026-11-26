@@ -56,7 +56,7 @@ async function main() {
   const startTime = Date.now();
   const scan = await performComprehensiveSeoScan({
     url: targetLiveUrl,
-    actorEmail: authenticatedUserEmail || 'admin@kriatech.com',
+    actorEmail: authenticatedUserEmail || 'sales@kriatech.in',
     supabaseClient: supabase,
   });
   const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(2);

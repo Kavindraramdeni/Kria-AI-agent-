@@ -9,24 +9,24 @@ export const OPTIONAL_DEMO_COMPETITORS: CompetitorReport[] = [
     website_url: 'https://example-competitor.in',
     products_analyzed: [
       {
-        product_name: 'Standard 4x6 Acrylic Tabletop Frame',
-        estimated_price: '₹599 - ₹699',
-        thickness_spec: '12mm to 15mm extruded acrylic',
+        product_name: 'Generic 6x4 Photo Fridge Magnet',
+        estimated_price: '₹199 - ₹249',
+        thickness_spec: '1.2mm thin extruded plastic with protruding ceramic magnet',
       },
     ],
     pricing_analysis: {
       pricing_gap_vs_kria:
-        'Competitors sell thinner 15mm extruded acrylic at ₹699. KRIA TECH direct factory price is ₹549 for 20mm premium cast acrylic, giving KRIA a 21% price advantage and superior thickness.',
+        'Competitors sell 1.2mm extruded magnets at ₹199–₹249. KRIA TECH (https://kriatech.in) offers 100% cell-cast monolithic 2mm + 2mm (4mm dual-plate) frames with 8 Grade N35 magnets per frame starting at MOQ 50 pcs (₹85/pc @ 100 pcs for KRA-REC-0604) and a 24-pc Demo Starter Kit (KRA-KIT-DEMO24) for ₹999 with free pan-India air delivery.',
       kria_advantages: [
-        'Cast acrylic does not yellow or craze under UV exposure.',
-        'Thicker 20mm cross section (10+10mm) provides self-standing stability without wobbling.',
-        'Direct factory CO2 laser cutting eliminates middleman markup.',
+        '100% cell-cast monolithic 2mm + 2mm (4mm dual-plate) acrylic with 93% optical clarity does not yellow under UV.',
+        '8 Grade N35 flush countersunk neodymium magnets per frame minimize contact friction on refrigerator enamel.',
+        'Direct Hyderabad, Telangana factory production eliminates middleman markups (MOQ 50 pcs; Starter Kit 24 pcs for ₹999).',
       ],
     },
     seo_opportunities: [
-      'Target interior stylists searching for "heavyweight executive acrylic block" who are dissatisfied with thin imported frames.',
+      'Target B2B gift retailers and wedding planners searching for "wholesale acrylic fridge magnets MOQ 50 Hyderabad" and "custom magnetic acrylic photo frames kriatech.in".',
     ],
-    source_urls: ['Public Marketplace Listings', 'KRIA Material Testing Specs'],
+    source_urls: ['Public Marketplace Listings', 'KRIA Material Testing Specs', 'https://kriatech.in'],
     research_date: '2026-01-15',
     is_demo: true,
     created_at: '2026-01-15T00:00:00.000Z',

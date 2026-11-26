@@ -64,9 +64,9 @@ const SAMPLE_PERFECT_HTML = `
   <meta name="robots" content="index, follow">
   <meta property="og:title" content="Magnetic Acrylic Photo Frame (5x7) | KRIA TECH">
   <meta property="og:description" content="Precision acrylic photo frames direct from manufacturer in Hyderabad.">
-  <meta property="og:image" content="https://kriatech.com/images/frame-5x7.webp">
+  <meta property="og:image" content="https://kriatech.in/images/frame-5x7.webp">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="canonical" href="https://kriatech.com/products/magnetic-acrylic-frames">
+  <link rel="canonical" href="https://kriatech.in/products/magnetic-acrylic-frames">
   <script defer src="/scripts/main.js"></script>
   <script type="application/ld+json">
   {
@@ -74,7 +74,7 @@ const SAMPLE_PERFECT_HTML = `
     "@type": "Product",
     "name": "Magnetic Acrylic Photo Frame (5x7 inch)",
     "sku": "KRIA-FRAME-5X7",
-    "image": "https://kriatech.com/images/frame-5x7.webp",
+    "image": "https://kriatech.in/images/frame-5x7.webp",
     "description": "Precision laser-cut magnetic acrylic block frame with optical grade acrylic.",
     "brand": {
       "@type": "Brand",
@@ -170,7 +170,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
   describe('1. URL Validation & Protocol Rules', () => {
     it('rejects invalid or non-HTTP protocols', async () => {
       await expect(
-        performComprehensiveSeoScan({ url: 'ftp://files.kriatech.com/spec.pdf' })
+        performComprehensiveSeoScan({ url: 'ftp://files.kriatech.in/spec.pdf' })
       ).rejects.toThrow(/Unsupported protocol 'ftp:'/);
 
       await expect(
@@ -182,7 +182,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
   describe('2. Network Diagnostics & Compression Verification', () => {
     it('measures network payload, compression, and security headers accurately', async () => {
       const scan = await performComprehensiveSeoScan({
-        url: 'https://kriatech.com/products/magnetic-acrylic-frames',
+        url: 'https://kriatech.in/products/magnetic-acrylic-frames',
         mockHtml: SAMPLE_PERFECT_HTML,
         mockHeaders: {
           'content-type': 'text/html; charset=utf-8',
@@ -209,7 +209,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
   describe('3. Deep DOM Parsing & Technical SEO Health', () => {
     it('correctly evaluates optimal title, meta description, and canonical tags', async () => {
       const scan = await performComprehensiveSeoScan({
-        url: 'https://kriatech.com/products/magnetic-acrylic-frames',
+        url: 'https://kriatech.in/products/magnetic-acrylic-frames',
         mockHtml: SAMPLE_PERFECT_HTML,
       });
 
@@ -229,7 +229,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
 
     it('detects defective DOM: missing description, heading hierarchy jumps, and bad links', async () => {
       const scan = await performComprehensiveSeoScan({
-        url: 'https://kriatech.com/products/acrylic-frames',
+        url: 'https://kriatech.in/products/acrylic-frames',
         mockHtml: SAMPLE_DEFECTIVE_HTML,
       });
 
@@ -251,7 +251,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
   describe('4. Core Web Vitals Server-Side Diagnostics', () => {
     it('diagnoses render-blocking scripts in <head> and image CLS hazards', async () => {
       const scan = await performComprehensiveSeoScan({
-        url: 'https://kriatech.com/products/acrylic-frames',
+        url: 'https://kriatech.in/products/acrylic-frames',
         mockHtml: SAMPLE_DEFECTIVE_HTML,
       });
 
@@ -269,7 +269,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
 
     it('verifies optimal image dimension declarations on perfect HTML', async () => {
       const scan = await performComprehensiveSeoScan({
-        url: 'https://kriatech.com/products/magnetic-acrylic-frames',
+        url: 'https://kriatech.in/products/magnetic-acrylic-frames',
         mockHtml: SAMPLE_PERFECT_HTML,
       });
 
@@ -282,7 +282,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
   describe('5. Schema.org Rich Results & B2B Wholesale Pricing Verification', () => {
     it('validates Product entity and AggregateOffer wholesale tier compliance', async () => {
       const scan = await performComprehensiveSeoScan({
-        url: 'https://kriatech.com/products/magnetic-acrylic-frames',
+        url: 'https://kriatech.in/products/magnetic-acrylic-frames',
         mockHtml: SAMPLE_PERFECT_HTML,
       });
 
@@ -296,7 +296,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
 
     it('penalizes missing Schema.org Product markup and flags missing offers', async () => {
       const scan = await performComprehensiveSeoScan({
-        url: 'https://kriatech.com/products/acrylic-frames',
+        url: 'https://kriatech.in/products/acrylic-frames',
         mockHtml: SAMPLE_DEFECTIVE_HTML,
       });
 
@@ -312,7 +312,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
   describe('6. Multi-Category Mathematical Scoring & Weighted Formula', () => {
     it('accurately calculates category scores and weighted overall score', async () => {
       const scan = await performComprehensiveSeoScan({
-        url: 'https://kriatech.com/products/magnetic-acrylic-frames',
+        url: 'https://kriatech.in/products/magnetic-acrylic-frames',
         mockHtml: SAMPLE_PERFECT_HTML,
       });
 
@@ -334,7 +334,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
 
     it('demonstrates measurable score reduction on defective pages', async () => {
       const scan = await performComprehensiveSeoScan({
-        url: 'https://kriatech.com/products/acrylic-frames',
+        url: 'https://kriatech.in/products/acrylic-frames',
         mockHtml: SAMPLE_DEFECTIVE_HTML,
       });
 
@@ -356,7 +356,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
 
       try {
         await expect(
-          performComprehensiveSeoScan({ url: 'https://kriatech.com/non-existent-page' })
+          performComprehensiveSeoScan({ url: 'https://kriatech.in/non-existent-page' })
         ).rejects.toThrow(/HTTP Fetch Failed: Target URL returned status 404/);
       } finally {
         global.fetch = originalFetch;
@@ -380,7 +380,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
   describe('8. Supabase Audit Persistence & Approval Request Proposal', () => {
     it('persists audit to seo_audits table and queues proposed changes to approval_requests', async () => {
       const scan = await performComprehensiveSeoScan({
-        url: 'https://kriatech.com/products/magnetic-acrylic-frames',
+        url: 'https://kriatech.in/products/magnetic-acrylic-frames',
         mockHtml: SAMPLE_PERFECT_HTML,
         actorEmail: 'admin@kriatech.com',
       });
@@ -403,7 +403,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
 
       const req = new NextRequest('http://localhost:3000/api/seo/scan', {
         method: 'POST',
-        body: JSON.stringify({ url: 'https://kriatech.com/products/magnetic-acrylic-frames' }),
+        body: JSON.stringify({ url: 'https://kriatech.in/products/magnetic-acrylic-frames' }),
       });
 
       const res = await scanRoute(req);
@@ -430,7 +430,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
       const req = new NextRequest('http://localhost:3000/api/seo/scan', {
         method: 'POST',
         body: JSON.stringify({
-          url: 'https://kriatech.com/products/magnetic-acrylic-frames',
+          url: 'https://kriatech.in/products/magnetic-acrylic-frames',
           mockHtml: SAMPLE_PERFECT_HTML,
         }),
       });
@@ -442,7 +442,7 @@ describe('Phase 3 — Real Website Technical SEO Scanner & Core Web Vitals Engin
       expect(json.success).toBe(true);
       expect(json.scan).toBeDefined();
       expect(json.scan.scores.overall).toBeGreaterThanOrEqual(80);
-      expect(json.scan.network.url).toBe('https://kriatech.com/products/magnetic-acrylic-frames');
+      expect(json.scan.network.url).toBe('https://kriatech.in/products/magnetic-acrylic-frames');
     });
   });
 });

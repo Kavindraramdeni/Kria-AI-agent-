@@ -1,3 +1,6 @@
+import type { ExecutionState } from './approval';
+export type { ExecutionState };
+
 export type UserRole = 'owner' | 'admin' | 'staff';
 
 export interface Profile {
@@ -87,6 +90,10 @@ export type LeadSource =
   | 'referral'
   | 'b2b_inquiry'
   | 'trade_show'
+  | 'kriatech_storefront'
+  | 'b2b_research'
+  | 'kriatech_storefront_whatsapp'
+  | 'kriatech_sample_order'
   | 'other';
 
 export type LeadStatus =
@@ -115,6 +122,8 @@ export interface Lead {
   priority: LeadPriority;
   notes: string | null;
   follow_up_date: string | null;
+  next_follow_up_at?: string | null;
+  last_contacted_at?: string | null;
   assigned_to: string | null;
   is_demo: boolean;
   created_at: string;
@@ -217,7 +226,107 @@ export interface ActivityLog {
   actor_type: 'user' | 'agent' | 'system';
   actor_id: string | null;
   metadata: Record<string, any>;
-  previous_hash?: string;
-  hash?: string;
+  previous_hash?: string | null;
+  hash?: string | null;
   created_at: string;
+}
+
+export type WorkflowStage =
+  | 'research'
+  | 'outreach_prepared'
+  | 'awaiting_approval'
+  | 'dispatched'
+  | 'awaiting_reply'
+  | 'qualified'
+  | 'quoted'
+  | 'follow_up'
+  | 'order_confirmed'
+  | 'completed'
+  | 'failed';
+
+export interface WorkflowStageHistoryEntry {
+  stage: WorkflowStage;
+  execution_state: ExecutionState;
+  timestamp: string;
+  actor?: string | null;
+  note?: string | null;
+}
+
+export interface WorkflowRun {
+  id: string;
+  title: string;
+  objective: string;
+  lead_id: string | null;
+  latest_approval_id: string | null;
+  latest_follow_up_id: string | null;
+  order_id: string | null;
+  current_stage: WorkflowStage;
+  execution_state: ExecutionState;
+  stage_history: WorkflowStageHistoryEntry[];
+  summary: string | null;
+  metadata: Record<string, any>;
+  is_demo: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type FollowUpStatus =
+  | 'scheduled'
+  | 'due'
+  | 'overdue'
+  | 'prepared'
+  | 'completed'
+  | 'cancelled';
+
+export type FollowUpChannel = 'whatsapp' | 'email' | 'call' | 'phone' | 'manual';
+
+export interface FollowUp {
+  id: string;
+  lead_id: string;
+  workflow_run_id: string | null;
+  approval_id: string | null;
+  scheduled_for: string;
+  assigned_action: string;
+  channel: FollowUpChannel;
+  status: FollowUpStatus;
+  prepared_message: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  is_demo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type OrderStatus =
+  | 'draft'
+  | 'confirmed'
+  | 'in_production'
+  | 'dispatched'
+  | 'delivered'
+  | 'cancelled';
+
+export type OrderPaymentStatus =
+  | 'pending'
+  | 'unpaid'
+  | 'partial'
+  | 'paid'
+  | 'refunded';
+
+export interface Order {
+  id: string;
+  lead_id: string | null;
+  workflow_run_id: string | null;
+  approval_id: string | null;
+  sku: string;
+  product_name: string;
+  quantity: number;
+  unit_price_inr: number;
+  total_inr: number;
+  status: OrderStatus;
+  payment_status: OrderPaymentStatus;
+  notes: string | null;
+  is_demo: boolean;
+  created_at: string;
+  updated_at: string;
 }

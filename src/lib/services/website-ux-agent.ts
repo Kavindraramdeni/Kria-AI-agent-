@@ -76,7 +76,7 @@ export async function executeWebsiteAuditAgent(
       execution_mode: 'error',
       model_invoked: false,
       is_simulated: false,
-      error: `Invalid URL '${rawUrl}'. Please provide a valid HTTP or HTTPS URL (e.g. https://kriatech.com/products/acrylic-frames).`,
+      error: `Invalid URL '${rawUrl}'. Please provide a valid HTTP or HTTPS URL (e.g. https://kriatech.in).`,
     };
   }
 
@@ -119,7 +119,7 @@ export async function executeWebsiteAuditAgent(
 
       const response = await fetch(parsedUrl.toString(), {
         headers: {
-          'User-Agent': 'KRIA-Tech-Website-Audit-Bot/1.0 (+https://kriatech.com; on-page audit)',
+          'User-Agent': 'KRIA-Tech-Website-Audit-Bot/1.0 (+https://kriatech.in; on-page audit)',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         },
         signal: controller.signal,

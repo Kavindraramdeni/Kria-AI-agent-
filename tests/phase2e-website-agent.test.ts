@@ -69,7 +69,7 @@ describe('Phase 2E — Real Website UX & On-Page SEO Audit Agent', () => {
   <meta charset="UTF-8">
   <title>Custom Acrylic Photo Frames | KRIA TECH Hyderabad Factory</title>
   <meta name="description" content="Direct factory wholesale acrylic photo frames & fridge magnets crafted in Hyderabad from 2mm virgin cell-cast acrylic with flush N35 neodymium magnets.">
-  <link rel="canonical" href="https://kriatech.com/products/acrylic-frames">
+  <link rel="canonical" href="https://kriatech.in">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta property="og:title" content="Custom Acrylic Photo Frames | KRIA TECH">
   <meta property="og:description" content="Precision fabricated 2mm cast acrylic photo frames.">
@@ -119,13 +119,13 @@ describe('Phase 2E — Real Website UX & On-Page SEO Audit Agent', () => {
 
   describe('1. Deterministic HTML & Schema.org Inspection Engine', () => {
     it('evaluates fully optimized HTML, extracts facts, and awards 100/100 score', () => {
-      const result = inspectHtml(validKriaHtml, 'https://kriatech.com/products/acrylic-frames');
+      const result = inspectHtml(validKriaHtml, 'https://kriatech.in');
 
       expect(result.totalScore).toBe(100);
       expect(result.facts.pageTitle).toBe('Custom Acrylic Photo Frames | KRIA TECH Hyderabad Factory');
       expect(result.facts.titleLength).toBeGreaterThanOrEqual(30);
       expect(result.facts.titleLength).toBeLessThanOrEqual(65);
-      expect(result.facts.canonicalUrl).toBe('https://kriatech.com/products/acrylic-frames');
+      expect(result.facts.canonicalUrl).toBe('https://kriatech.in');
       expect(result.facts.isMobileResponsive).toBe(true);
       expect(result.facts.h1Count).toBe(1);
       expect(result.facts.totalImages).toBe(2);
@@ -198,7 +198,7 @@ describe('Phase 2E — Real Website UX & On-Page SEO Audit Agent', () => {
 
       try {
         const result = await executeWebsiteAuditAgent({
-          target_url: 'https://kriatech.com/non-existent-page',
+          target_url: 'https://kriatech.in/non-existent-page',
         });
 
         expect(result.success).toBe(false);
@@ -235,7 +235,7 @@ describe('Phase 2E — Real Website UX & On-Page SEO Audit Agent', () => {
   describe('3. Truth-in-Product Guardrails', () => {
     it('strictly rejects input containing forbidden absolute claims ("never scratches")', async () => {
       const result = await executeWebsiteAuditAgent({
-        target_url: 'https://kriatech.com/products/acrylic-frames',
+        target_url: 'https://kriatech.in',
         topic_or_prompt: 'Verify that this page proves our acrylic never scratches and is 100% scratch-proof',
       });
 
@@ -249,7 +249,7 @@ describe('Phase 2E — Real Website UX & On-Page SEO Audit Agent', () => {
   describe('4. Real Gemini AI Synthesis & Output Schema Validation', () => {
     it('synthesizes actionable recommendations matching measured score and routes proposal to approval queue', async () => {
       const mockAuditOutput = {
-        target_url: 'https://kriatech.com/products/acrylic-frames',
+        target_url: 'https://kriatech.in',
         page_title: 'Custom Acrylic Photo Frames | KRIA TECH Hyderabad Factory',
         detected_issues: [
           {
@@ -278,7 +278,7 @@ describe('Phase 2E — Real Website UX & On-Page SEO Audit Agent', () => {
       });
 
       const result = await executeWebsiteAuditAgent({
-        target_url: 'https://kriatech.com/products/acrylic-frames',
+        target_url: 'https://kriatech.in',
         mockHtml: validKriaHtml,
         actor_email: 'admin@kriatech.com',
       });
@@ -294,7 +294,7 @@ describe('Phase 2E — Real Website UX & On-Page SEO Audit Agent', () => {
       // Validated Output against Schema
       expect(result.output).toBeDefined();
       const parsed = WebsiteAgentOutputSchema.parse(result.output);
-      expect(parsed.target_url).toBe('https://kriatech.com/products/acrylic-frames');
+      expect(parsed.target_url).toBe('https://kriatech.in');
       expect(parsed.seo_score).toBe(100);
       expect(parsed.mobile_ux_notes).toContain('sticky mobile bar');
 
@@ -316,7 +316,7 @@ describe('Phase 2E — Real Website UX & On-Page SEO Audit Agent', () => {
   describe('5. API Route Integration (/api/agents/website-agent/run)', () => {
     it('returns 200 with live_ai execution metadata and inspection checks breakdown', async () => {
       const mockAuditOutput = {
-        target_url: 'https://kriatech.com/products/acrylic-frames',
+        target_url: 'https://kriatech.in',
         page_title: 'Custom Acrylic Photo Frames | KRIA TECH',
         detected_issues: [
           {
@@ -343,7 +343,7 @@ describe('Phase 2E — Real Website UX & On-Page SEO Audit Agent', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          target_url: 'https://kriatech.com/products/acrylic-frames',
+          target_url: 'https://kriatech.in',
           mockHtml: validKriaHtml,
           task_type: 'on_page_audit',
         }),

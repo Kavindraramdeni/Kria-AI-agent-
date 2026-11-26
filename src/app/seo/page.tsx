@@ -43,7 +43,7 @@ export default function SEOStudioPage() {
   const [strategyApprovalSent, setStrategyApprovalSent] = useState(false);
 
   // Real Technical SEO & Core Web Vitals Scanner State (Phase 3)
-  const [scannerUrl, setScannerUrl] = useState('https://kriatech.com/products/magnetic-acrylic-frames');
+  const [scannerUrl, setScannerUrl] = useState('https://kriatech.in');
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<any | null>(null);
   const [scannerError, setScannerError] = useState<string | null>(null);
@@ -260,7 +260,7 @@ export default function SEOStudioPage() {
               required
               value={scannerUrl}
               onChange={(e) => setScannerUrl(e.target.value)}
-              placeholder="https://kriatech.com/products/magnetic-acrylic-frames"
+              placeholder="https://kriatech.in"
               className="flex-1 px-3.5 py-2.5 rounded-lg bg-kria-850 border border-kria-border text-xs text-white focus:outline-none focus:border-electric font-mono"
             />
             <button

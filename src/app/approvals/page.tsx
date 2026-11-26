@@ -6,6 +6,7 @@ import { getApprovals, updateApprovalStatus } from '@/lib/services/approvals';
 import { logActivity } from '@/lib/services/activity-logs';
 import { createClient } from '@/lib/supabase/client';
 import { ApprovalRequest, ApprovalStatus } from '@/types/approval';
+import { ExecutionStateLabels, ExecutionStateDescriptions } from '@/lib/types/workflow-states';
 import {
   ShieldCheck,
   CheckCircle,
@@ -391,6 +392,14 @@ export default function ApprovalsPage() {
                     >
                       Status: {item.status}
                     </span>
+                    {item.execution_state && ExecutionStateLabels[item.execution_state] && (
+                      <span
+                        title={ExecutionStateDescriptions[item.execution_state] || ''}
+                        className="px-2 py-0.5 rounded text-[11px] font-semibold bg-kria-800 text-electric-light border border-electric/20"
+                      >
+                        {ExecutionStateLabels[item.execution_state]}
+                      </span>
+                    )}
                     <span className="text-slate-500 text-[11px]">
                       {new Date(item.created_at).toLocaleString()}
                     </span>

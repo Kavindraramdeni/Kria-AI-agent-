@@ -293,10 +293,40 @@ export async function executeApprovedAction(
           actorEmail,
         });
       } else if (item.action_type === 'customer_message') {
-        const channel = item.destination?.toLowerCase().includes('email') ? 'email' : 'whatsapp';
+        // R2 FIX: Resolve the actual recipient from approval metadata instead of using the
+        // literal destination string "Customer Outreach Channel (WhatsApp / Email)".
+        // The sales agent stores phone_number and email in proposed_content.
+        const metaPhone: string | null =
+          item.proposed_content?.phone_number || null;
+        const metaEmail: string | null =
+          item.proposed_content?.email || null;
+
+        let channel: 'whatsapp' | 'email' = 'whatsapp';
+        let resolvedDestination: string;
+
+        if (metaPhone) {
+          channel = 'whatsapp';
+          resolvedDestination = metaPhone;
+        } else if (metaEmail) {
+          channel = 'email';
+          resolvedDestination = metaEmail;
+        } else if (item.destination?.startsWith('whatsapp:')) {
+          channel = 'whatsapp';
+          resolvedDestination = item.destination.replace('whatsapp:', '');
+        } else if (item.destination?.startsWith('email:')) {
+          channel = 'email';
+          resolvedDestination = item.destination.replace('email:', '');
+        } else if (item.destination?.toLowerCase().includes('email')) {
+          channel = 'email';
+          resolvedDestination = item.destination;
+        } else {
+          channel = 'whatsapp';
+          resolvedDestination = item.destination || 'Customer WhatsApp Direct';
+        }
+
         externalDispatchResult = await dispatchExternalAction({
           channel,
-          destination: item.destination || 'Customer WhatsApp Direct',
+          destination: resolvedDestination,
           payload: item.proposed_content,
           approvalId,
           actorEmail,

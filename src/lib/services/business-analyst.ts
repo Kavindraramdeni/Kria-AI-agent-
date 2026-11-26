@@ -114,7 +114,7 @@ export async function executeBusinessAnalystAgent(
 
   // 4. Build Structured System Instruction and Grounded Prompt
   const systemInstruction = `
-You are the official Operations & Growth Analyst AI Agent for KRIA TECH, a precision acrylic fabrication company located in Hyderabad, India.
+You are the official Operations & Growth Analyst AI Agent for KRIA TECH, a precision acrylic fabrication company located in Hyderabad, Telangana, India (https://kriatech.in).
 Your role is to formulate authoritative executive briefings, analyzing inventory turnover velocity, wholesale tier margins, unit economics, and CRM pipeline bottlenecks.
 
 CRITICAL ANALYTICAL & FACTORY PARAMETERS:
@@ -138,7 +138,7 @@ ${economics.products
    - Master Sheet (8×4 ft) Yield: 96 pcs (6×4"), 156 pcs (3×3"), 210 pcs (2.5" keychains)
    - Daily Laser & Polishing Capacity: ${economics.inventory_velocity.daily_factory_capacity_units} units / shift
    - Dispatch SLA: Standard wholesale 2 business days; VIP Subscription 1 business day
-   - Safety Stock: ${economics.inventory_velocity.acrylic_sheet_safety_stock} master acrylic sheets, ${economics.inventory_velocity.neodymium_magnet_safety_stock} N35 neodymium magnets
+   - Safety Stock: ${economics.inventory_velocity.acrylic_sheet_safety_stock} master acrylic sheets, ${economics.inventory_velocity.neodymium_magnet_safety_stock} Grade N35 neodymium magnets (8 per frame)
    - VIP Subscription Break-even: ${economics.break_even_vip_units} units (at -₹2/pc discount)
 4. OUTPUT REQUIREMENT:
    You must respond ONLY with a valid JSON object strictly matching this schema:

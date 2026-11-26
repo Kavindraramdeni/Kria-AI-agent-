@@ -17,6 +17,10 @@ export interface VerifiedProductRecord {
     material_spec?: string;
     manufacturing_location?: string;
     hardware?: string;
+    bundle_type?: string;
+    contents?: string;
+    shipping?: string;
+    limit?: string;
   };
   source: 'database' | 'factory_matrix' | 'mapf_standards' | 'none';
 }
@@ -110,8 +114,8 @@ export function lookupProductRecord(identifier: {
       category: 'Tabletop Acrylic Photo Blocks',
       dimensions: mapf.thickness,
       materials: [
-        KRIA_MANUFACTURING_FACTS.materials.acrylic,
-        KRIA_MANUFACTURING_FACTS.materials.magnets,
+        'Grade-A imported virgin cast acrylic (20-30mm dual block)',
+        'N52 nickel-plated neodymium corner magnets',
       ],
       production_notes: mapf.edge_polish,
       verification_status: 'verified',
@@ -152,6 +156,10 @@ export function lookupProductRecord(identifier: {
             material_spec: vClaims.material_spec,
             manufacturing_location: vClaims.manufacturing_location,
             hardware: vClaims.hardware,
+            bundle_type: vClaims.bundle_type,
+            contents: vClaims.contents,
+            shipping: vClaims.shipping,
+            limit: vClaims.limit,
           }
         : undefined,
       source: 'factory_matrix',
@@ -297,6 +305,20 @@ export function resolveProductGrounding(req: {
     // Hardware (e.g. keychains): ONLY if verified supporting record exists
     if (record.verification_claims?.hardware) {
       verifiedSpecs.push(`Hardware: ${record.verification_claims.hardware}`);
+    }
+
+    // Bundle / starter-kit specifications: ONLY if verified supporting record exists
+    if (record.verification_claims?.bundle_type) {
+      verifiedSpecs.push(`Bundle Type: ${record.verification_claims.bundle_type}`);
+    }
+    if (record.verification_claims?.contents) {
+      verifiedSpecs.push(`Bundle Contents: ${record.verification_claims.contents}`);
+    }
+    if (record.verification_claims?.shipping) {
+      verifiedSpecs.push(`Shipping: ${record.verification_claims.shipping}`);
+    }
+    if (record.verification_claims?.limit) {
+      verifiedSpecs.push(`Order Limit: ${record.verification_claims.limit}`);
     }
 
     // Edge finish: ONLY if explicitly in production notes / edge polish record

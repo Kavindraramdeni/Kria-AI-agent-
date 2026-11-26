@@ -140,8 +140,8 @@ ${
      * Tabletop Photo Blocks: 12mm to 15mm extruded acrylic with saw-cut or diamond-less edges, lower light transmission (~85%), prone to UV yellowing. Retail: ₹599 - ₹799.
      * Keychains: 1.5mm snap-in plastic with loose jump rings. Bulk: ₹45 - ₹60.
    - KRIA TECH Direct Factory Edge:
-     * Monolithic 2mm virgin cell-cast acrylic with 93% optical clarity (non-yellowing, UV-stable).
-     * Flush countersunk rare-earth N35 neodymium magnets (zero protrusion, prevents metal surface scratches).
+     * 100% cell-cast monolithic 2mm + 2mm (4mm dual-plate) acrylic with 93% optical clarity (non-yellowing, UV-stable).
+     * 8 Grade N35 flush countersunk rare-earth neodymium magnets per frame (flush mounting minimizes contact friction on metal surfaces).
      * Tabletop blocks: 20mm (10+10mm) solid cast acrylic with diamond-polished edges (MAPF-0406-CL).
      * Direct Hyderabad manufacturing facility eliminating 3 levels of middleman distributor markups.
 4. OUTPUT REQUIREMENT:

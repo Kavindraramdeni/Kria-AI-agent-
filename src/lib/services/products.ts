@@ -44,7 +44,7 @@ export async function createProduct(product: Partial<Product>): Promise<{ succes
         customization_options: product.customization_options || {},
         retail_price: Number(product.retail_price) || 0,
         bulk_price: Number(product.bulk_price) || 0,
-        min_bulk_quantity: Number(product.min_bulk_quantity) || 10,
+        min_bulk_quantity: Number(product.min_bulk_quantity) || 50,
         production_notes: product.production_notes || null,
         image_url: product.image_url || null,
         status: product.status || 'active',

@@ -40,7 +40,7 @@ export function Header({ title = 'Command Center', subtitle = 'KRIA TECH Growth 
               .single();
 
             setCurrentUser({
-              email: user.email || 'user@kriatech.com',
+              email: user.email || 'sales@kriatech.in',
               role: (profile?.role as 'owner' | 'staff') || 'staff',
             });
           }

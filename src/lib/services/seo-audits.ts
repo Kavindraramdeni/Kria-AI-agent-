@@ -5,7 +5,7 @@ import { isDemoModeActive } from '@/lib/demo-mode';
 export const OPTIONAL_DEMO_SEO_AUDITS: SEOAudit[] = [
   {
     id: 'demo-audit-001',
-    target_url: 'https://kriatech.com/products/magnetic-acrylic-frames',
+    target_url: 'https://kriatech.in',
     audit_type: 'on-page',
     issues: [
       {
