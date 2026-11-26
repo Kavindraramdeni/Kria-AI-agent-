@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { performComprehensiveSeoScan } from '@/lib/services/seo-scanner';
 import { logActivity } from '@/lib/services/activity-logs';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Scheduled Website Health & Technical SEO Monitor for kriatech.in
  * Triggered periodically via Vercel Cron, GitHub Actions, or monitoring ping.
@@ -36,12 +38,12 @@ export async function GET(req: NextRequest) {
       entity_type: 'website_health',
       entity_id: targetUrl,
       action: 'automated_health_scan_completed',
-      description: `Automated website monitor audited '${targetUrl}'. Overall: ${scanResult.overallScore}/100, TTFB: ${scanResult.network.requestResponseStartMs}ms, Issues: ${scanResult.issues.length}`,
+      description: `Automated website monitor audited '${targetUrl}'. Overall: ${scanResult.scores.overall}/100, TTFB: ${scanResult.network.requestResponseStartMs}ms, Issues: ${scanResult.issues.length}`,
       actor_type: 'system',
       actor_id: 'cron-monitor',
       metadata: {
         url: targetUrl,
-        overall_score: scanResult.overallScore,
+        overall_score: scanResult.scores.overall,
         ttfb_ms: scanResult.network.requestResponseStartMs,
         issues_detected: scanResult.issues.length,
         saved_audit_id: scanResult.savedAuditId,
@@ -53,12 +55,12 @@ export async function GET(req: NextRequest) {
       success: true,
       timestamp: new Date().toISOString(),
       target_url: targetUrl,
-      overall_score: scanResult.overallScore,
+      overall_score: scanResult.scores.overall,
       health: {
-        seo: scanResult.seoHealthScore,
-        performance: scanResult.performanceScore,
-        mobile_ux: scanResult.mobileUxScore,
-        structured_data: scanResult.structuredDataScore,
+        seo: scanResult.scores.seoHealth,
+        performance: scanResult.scores.performance,
+        mobile_ux: scanResult.scores.mobileUx,
+        structured_data: scanResult.scores.structuredData,
       },
       latency_ms: scanResult.network.requestResponseStartMs,
       issues_count: scanResult.issues.length,

@@ -5,11 +5,13 @@ import { NextRequest } from 'next/server';
 // Mock SEO Scanner
 vi.mock('@/lib/services/seo-scanner', () => ({
   performComprehensiveSeoScan: vi.fn().mockResolvedValue({
-    overallScore: 92,
-    seoHealthScore: 95,
-    performanceScore: 88,
-    mobileUxScore: 96,
-    structuredDataScore: 90,
+    scores: {
+      overall: 92,
+      seoHealth: 95,
+      performance: 88,
+      mobileUx: 96,
+      structuredData: 90,
+    },
     network: {
       requestResponseStartMs: 142,
     },

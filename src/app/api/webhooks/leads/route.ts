@@ -3,6 +3,8 @@ import { executeSalesLeadAgent } from '@/lib/services/sales-lead-agent';
 import { checkRateLimit } from '@/lib/services/rate-limit';
 import { logActivity } from '@/lib/services/activity-logs';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Inbound Lead Ingestion Webhook for kriatech.in
  * Connects WhatsApp Order Generator, Contact Forms, and Storefront Inquiries directly to KRIA AI.
