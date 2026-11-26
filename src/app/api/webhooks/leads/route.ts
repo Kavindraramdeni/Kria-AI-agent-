@@ -78,9 +78,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const targetSku = typeof sku === 'string' ? sku.trim() : '';
     const parsedQty = Number(quantity);
-    const validQuantity = Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : 50; // Default to 50 pcs MOQ
-    const targetSku = typeof sku === 'string' && sku.trim() !== '' ? sku.trim() : 'KRA-SQU-0202';
+    const validQuantity = Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : null;
+
+    if (!targetSku || validQuantity === null) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'A valid product SKU and order quantity are required to create an accurate quotation.',
+          required_fields: ['sku', 'quantity'],
+        },
+        { status: 422 }
+      );
+    }
+
     const promptMessage = notes || message || `Inbound B2B wholesale inquiry from ${name || 'Buyer'} for ${validQuantity} units.`;
 
     // 4. Run Sales & CRM Lead Agent (Deterministic Pricing + Intent Qualification + Approval Gate)
@@ -98,6 +110,30 @@ export async function POST(req: NextRequest) {
       topic_or_prompt: promptMessage,
       actor_email: 'system@kriatech.in',
     });
+
+    if (!agentResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: agentResult.error || 'KRIA AI could not process this lead.',
+          execution_mode: agentResult.execution_mode,
+          model_invoked: agentResult.model_invoked,
+        },
+        { status: 502 }
+      );
+    }
+
+    if (!agentResult.saved_lead_id || !agentResult.approval_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Lead analysis completed, but CRM persistence or quotation approval creation did not complete.',
+          lead_saved: Boolean(agentResult.saved_lead_id),
+          approval_created: Boolean(agentResult.approval_id),
+        },
+        { status: 503 }
+      );
+    }
 
     // 5. Log Activity Audit Trail
     await logActivity({
@@ -127,8 +163,8 @@ export async function POST(req: NextRequest) {
           approval_id: agentResult.approval_id,
           status: 'approval_pending',
           quote: agentResult.quote,
-          intent_tier: agentResult.output?.intent_tier || 'wholesale_reseller',
-          lead_score: agentResult.output?.score || 85,
+          intent_tier: agentResult.output?.intent_tier,
+          lead_score: agentResult.output?.score,
           draft_response_message: agentResult.output?.draft_response_message,
         },
       },
