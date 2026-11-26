@@ -180,6 +180,7 @@ export async function POST(
           source: body.source,
           topic_or_prompt: typeof input === 'string' ? input : body.topic_or_prompt || body.notes,
           actor_email: session.email,
+          supabaseClient: supabase,
         });
 
         if (!salesResult.success) {
