@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { executeSalesLeadAgent } from '@/lib/services/sales-lead-agent';
 import { checkRateLimit } from '@/lib/services/rate-limit';
 import { logActivity } from '@/lib/services/activity-logs';
+import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,6 +110,7 @@ export async function POST(req: NextRequest) {
       source,
       topic_or_prompt: promptMessage,
       actor_email: 'system@kriatech.in',
+      supabaseClient: createClient(),
     });
 
     if (!agentResult.success) {
