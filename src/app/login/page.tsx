@@ -98,9 +98,9 @@ function LoginForm() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => handleSelectEmailPreset('admin@kriatech.com')}
+                onClick={() => handleSelectEmailPreset('kavindraraj1703@gmail.com')}
                 className={`p-2.5 rounded-xl border text-left transition-all ${
-                  email === 'admin@kriatech.com'
+                  email === 'kavindraraj1703@gmail.com'
                     ? 'bg-electric/20 border-electric text-white shadow-glow'
                     : 'bg-kria-850 border-kria-border text-slate-400 hover:text-white'
                 }`}
@@ -109,7 +109,7 @@ function LoginForm() {
                   <UserCheck className="h-3.5 w-3.5 text-electric-light" />
                   Owner Account
                 </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">admin@kriatech.com</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">kavindraraj1703@gmail.com</p>
               </button>
 
               <button
@@ -146,7 +146,7 @@ function LoginForm() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@kriatech.com"
+                  placeholder="kavindraraj1703@gmail.com"
                   className="w-full pl-9 pr-4 py-2 rounded-lg bg-kria-850 border border-kria-border text-xs text-white placeholder-slate-500 focus:outline-none focus:border-electric"
                 />
                 <Mail className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
